@@ -1,0 +1,77 @@
+/* Assistant replies. Tuned for a narrow panel: tight vertical rhythm, and
+   anything wide scrolls inside its own box rather than stretching the panel. */
+.md {
+  font-size: 12.5px; line-height: 1.6;
+  overflow-wrap: anywhere; word-break: break-word;
+  min-width: 0; max-width: 100%;
+}
+.md * { max-width: 100%; }
+
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 0 0 8px; }
+
+.md h1, .md h2, .md h3, .md h4 {
+  margin: 14px 0 6px; line-height: 1.3; font-weight: 600;
+}
+.md h1 { font-size: 15px; }
+.md h2 { font-size: 14px; }
+.md h3 { font-size: 13px; }
+.md h4 { font-size: 12.5px; color: var(--text-dim); }
+
+.md ul, .md ol { margin: 0 0 8px; padding-left: 20px; }
+.md li { margin-bottom: 3px; }
+.md li > p { margin: 0; }
+
+.md a { color: var(--accent); }
+.md strong { font-weight: 600; }
+
+.md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; padding: 1px 4px; border-radius: 3px;
+  background: var(--surface-3);
+}
+.md pre {
+  margin: 0 0 8px; padding: 9px 11px; border-radius: 6px;
+  background: var(--surface-3);
+}
+.md pre code { padding: 0; background: none; font-size: 11px; line-height: 1.5; }
+
+.md blockquote {
+  margin: 0 0 8px; padding-left: 10px;
+  border-left: 2px solid var(--border-strong); color: var(--text-dim);
+}
+
+.md table { border-collapse: collapse; font-size: 11.5px; }
+.md th, .md td {
+  border: 1px solid var(--border); padding: 4px 8px; text-align: left;
+}
+.md th { background: var(--surface-2); font-weight: 600; }
+
+.md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+/* Wide content scrolls in place; the panel must never grow to fit it. */
+.md-scroll { overflow-x: auto; margin: 0 0 8px; max-width: 100%; }
+.md-scroll > table, .md-scroll > pre { margin-bottom: 0; }
+
+/* KaTeX defaults are sized for a document, not a side panel. */
+.md .katex { font-size: 1.02em; }
+.md .katex-display { margin: 10px 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+
+/* A paper the assistant is suggesting. Sits inline in the sentence that
+   mentions it, so an answer can offer several without interrupting. */
+.md-paper {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  font: inherit; font-size: 11.5px; line-height: 1.35;
+  padding: 1px 8px 2px; margin: 0 1px; cursor: pointer;
+  text-align: left; vertical-align: baseline;
+  border-radius: 5px;
+  background: var(--accent-bg); color: var(--text);
+  border: 1px solid var(--accent);
+}
+.md-paper:hover { background: var(--accent); color: #fff; }
+.md-paper-icon {
+  font-size: 12px; font-weight: 600; line-height: 1;
+  color: var(--accent); flex: 0 0 auto;
+}
+.md-paper:hover .md-paper-icon { color: #fff; }

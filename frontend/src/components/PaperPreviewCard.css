@@ -1,0 +1,67 @@
+.ppc-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(2px);
+  animation: ppc-fade 120ms ease-out;
+}
+@keyframes ppc-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ppc-backdrop { animation: none; } }
+
+.ppc-card {
+  display: flex;
+  flex-direction: column;
+  width: min(1080px, 94vw);
+  max-height: 88vh;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.ppc-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.ppc-kicker {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.ppc-close {
+  margin-left: auto;
+  font: inherit;
+  font-size: 11.5px;
+  padding: 4px 12px;
+  cursor: pointer;
+  border-radius: 5px;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.ppc-close:hover { border-color: var(--accent); }
+
+.ppc-body { overflow-y: auto; padding: 16px 20px 28px; }
+/* The card supplies its own padding, so the shared body must not add page chrome. */
+.ppc-body .add-preview { margin: 0; }
+
+.ppc-reason {
+  min-width: 0; flex: 1 1 auto;
+  font-size: 10.5px; color: var(--text-dim); font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ppc-saved {
+  font-size: 11.5px; padding: 5px 12px; border-radius: 5px;
+  background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok);
+}

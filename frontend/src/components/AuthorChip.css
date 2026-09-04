@@ -1,0 +1,40 @@
+.ac-wrap { position: relative; display: inline; }
+
+.ac-name {
+  font: inherit; font-size: inherit; padding: 0; cursor: pointer;
+  background: none; border: none; color: var(--text);
+  text-decoration: underline; text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+.ac-name:hover { color: var(--accent); text-decoration-color: var(--accent); }
+
+.ac-affil { color: var(--text-dim); }
+
+/* Anchored above the name, and allowed to overflow the panel so a portrait is
+   not clipped by a narrow sidebar. */
+.ac-card {
+  position: fixed; z-index: 80;
+  display: flex; gap: 9px; align-items: flex-start;
+  width: 244px; padding: 9px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 8px; box-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
+  pointer-events: none;
+  animation: ac-in 110ms ease-out;
+}
+@keyframes ac-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ac-card { animation: none; } }
+
+.ac-card img, .ac-blank {
+  width: 54px; height: 54px; flex: 0 0 auto;
+  object-fit: cover; border-radius: 5px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.ac-blank {
+  display: grid; place-items: center;
+  font-size: 16px; font-weight: 600; color: var(--text-dim);
+}
+
+.ac-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ac-meta strong { font-size: 12px; line-height: 1.3; }
+.ac-meta span { font-size: 10.5px; line-height: 1.4; color: var(--text); }
+.ac-meta .dim { color: var(--text-dim); }

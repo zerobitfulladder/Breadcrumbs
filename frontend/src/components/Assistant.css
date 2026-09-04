@@ -1,0 +1,294 @@
+.as-root {
+  position: fixed; z-index: 60;
+  display: flex; flex-direction: column;
+  min-width: 0; max-width: 100vw;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+  overflow: hidden;
+}
+
+.as-bar {
+  display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+  padding: 8px 10px 8px 13px;
+  border-bottom: 1px solid var(--border); background: var(--surface-2);
+  font-size: 12.5px;
+  cursor: grab; user-select: none; touch-action: none;
+}
+.as-bar:active { cursor: grabbing; }
+/* Takes the space the buttons leave and ellipsizes there, rather than being
+   cut to a fixed length that ignores how wide the panel actually is. */
+.as-ctx {
+  flex: 1 1 auto; min-width: 0;
+  font-size: 10.5px; color: var(--text-dim);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.as-icon {
+  font: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer;
+  background: none; color: var(--text-dim);
+  border: 1px solid transparent; border-radius: 4px;
+}
+.as-icon:hover { color: var(--text); border-color: var(--border-strong); }
+.as-bar > strong { flex: 0 0 auto; }
+
+.as-log {
+  flex: 1 1 auto; min-width: 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 12px; display: grid; gap: 12px; align-content: start;
+}
+
+.as-hint {
+  font-size: 11.5px; line-height: 1.55; color: var(--text-dim);
+  padding: 10px 12px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 7px;
+}
+
+.as-turn { display: grid; gap: 5px; min-width: 0; }
+.as-turn.is-user .as-text {
+  justify-self: end; max-width: 88%;
+  background: var(--accent-bg); border: 1px solid var(--accent);
+  padding: 7px 10px; border-radius: 9px 9px 2px 9px;
+}
+.as-turn.is-assistant .as-text {
+  font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.as-text { font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.as-tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.as-tools li {
+  min-width: 0; max-width: 100%;
+  font-size: 10.5px; color: var(--text-dim);
+  padding: 3px 6px; border-radius: 5px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.as-tools li.is-open { background: var(--surface-3); }
+.as-tool-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.as-tools li code { font-size: 10px; color: var(--text); }
+
+.as-tool-toggle {
+  display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto;
+  font: inherit; padding: 0; cursor: pointer;
+  background: none; border: none; color: inherit;
+}
+.as-tool-toggle:disabled { cursor: default; }
+.as-caret { width: 8px; font-size: 8px; color: var(--text-dim); }
+.as-tool-toggle:hover:not(:disabled) code { color: var(--accent); }
+
+.as-tool-arg {
+  min-width: 0; flex: 1 1 auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px;
+  opacity: 0.85;
+}
+
+.as-tool-detail {
+  margin-top: 5px; padding-top: 5px;
+  border-top: 1px solid var(--border);
+  display: grid; gap: 3px;
+}
+.as-detail-label {
+  font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.as-tool-detail pre {
+  margin: 0 0 4px; padding: 6px 8px; max-height: 220px;
+  overflow: auto; border-radius: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-size: 9.5px; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.as-tools li.is-running { border-color: var(--accent); }
+.as-tools li.is-running code::after { content: " …"; }
+.as-tools li.is-failed { border-color: var(--danger); color: var(--danger-fg); }
+.as-write {
+  font-size: 9px; padding: 0 5px; border-radius: 999px;
+  background: var(--warn-bg); color: var(--warn-fg); border: 1px solid var(--warn);
+}
+.as-summary {
+  opacity: 0.8; min-width: 0; flex: 0 1 auto; margin-left: auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.as-thinking { display: flex; gap: 4px; padding: 4px 2px; }
+.as-thinking span {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--text-dim);
+  animation: as-bounce 1.1s ease-in-out infinite;
+}
+.as-thinking span:nth-child(2) { animation-delay: 0.15s; }
+.as-thinking span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes as-bounce { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .as-thinking span { animation: none; } }
+
+.as-error {
+  font-size: 11.5px; padding: 8px 10px; border-radius: 6px;
+  background: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger-fg);
+}
+
+.as-compose {
+  flex: 0 0 auto; display: flex; align-items: flex-end; gap: 7px; padding: 9px;
+  border-top: 1px solid var(--border); background: var(--surface-2);
+}
+.as-compose textarea {
+  flex: 1 1 auto; min-width: 0;
+  font: inherit; font-size: 12.5px; line-height: 1.45;
+  padding: 7px 9px; resize: none;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.as-compose textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.as-compose button {
+  flex: 0 0 auto; align-self: flex-end;
+  font: inherit; font-size: 12px; padding: 7px 14px; cursor: pointer;
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+}
+.as-compose button:disabled { opacity: 0.45; cursor: default; }
+
+.as-fab {
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.as-fab kbd {
+  font: inherit; font-size: 10px; letter-spacing: 0.06em;
+  padding: 1px 5px; border-radius: 4px;
+  background: rgb(255 255 255 / 0.22); color: #fff;
+}
+
+/* Bottom-right grip. The panel is a floating window now, so it needs a
+   deliberate resize target rather than the browser's own. */
+.as-grip {
+  position: absolute; right: 0; bottom: 0;
+  width: 16px; height: 16px; cursor: nwse-resize; touch-action: none;
+}
+.as-grip::after {
+  content: ""; position: absolute; right: 3px; bottom: 3px;
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--border-strong);
+  border-bottom: 2px solid var(--border-strong);
+}
+.as-grip:hover::after { border-color: var(--accent); }
+
+/* Editing an earlier message: it is resent and the replies that followed the
+   old wording are discarded. */
+.as-edit { display: grid; gap: 6px; }
+.as-edit textarea {
+  width: 100%; font: inherit; font-size: 12.5px; line-height: 1.45;
+  padding: 7px 9px; resize: vertical;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--accent); border-radius: 7px;
+}
+.as-edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.as-edit-actions button {
+  font: inherit; font-size: 11px; padding: 4px 11px; cursor: pointer;
+  border-radius: 5px; background: var(--surface-3); color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.as-edit-actions .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.as-edit-actions button:disabled { opacity: 0.5; cursor: default; }
+
+.as-turn.is-user .as-text { position: relative; }
+.as-edit-btn {
+  position: absolute; top: -9px; right: -4px;
+  font: inherit; font-size: 9.5px; padding: 1px 6px; cursor: pointer;
+  border-radius: 999px; opacity: 0;
+  background: var(--surface-3); color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+  transition: opacity 110ms ease;
+}
+.as-turn.is-user:hover .as-edit-btn { opacity: 1; }
+.as-edit-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.as-stop {
+  background: var(--danger) !important; color: #fff;
+  border: none; border-radius: 6px;
+  font: inherit; font-size: 12px; padding: 7px 14px; cursor: pointer;
+  flex: 0 0 auto; align-self: flex-end;
+}
+.as-stop:hover { filter: brightness(1.08); }
+
+.as-interrupted {
+  font-size: 10.5px; color: var(--text-dim); font-style: italic;
+  padding: 2px 0;
+}
+
+.as-view {
+  flex: 0 0 auto; font: inherit; font-size: 9.5px; padding: 1px 8px; cursor: pointer;
+  border-radius: 999px;
+  background: var(--accent-bg); color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.as-view:hover { background: var(--accent); color: #fff; }
+
+/* Thread tabs. Conversations persist, so the bar is how you get back to one. */
+.as-tabs {
+  display: flex; align-items: stretch; flex: 0 0 auto;
+  border-bottom: 1px solid var(--border); background: var(--surface-2);
+}
+.as-tabs-strip {
+  display: flex; gap: 2px; padding: 4px 4px 0;
+  overflow-x: auto; overflow-y: hidden; flex: 1 1 auto; min-width: 0;
+  scrollbar-width: none;
+}
+.as-tabs-strip::-webkit-scrollbar { display: none; }
+
+.as-tab {
+  display: flex; align-items: center; flex: 0 0 auto; max-width: 150px;
+  border-radius: 6px 6px 0 0;
+  border: 1px solid transparent; border-bottom: none;
+}
+.as-tab.is-active {
+  background: var(--surface); border-color: var(--border);
+  margin-bottom: -1px; padding-bottom: 1px;
+}
+.as-tab:not(.is-active):hover { background: var(--surface-3); }
+
+.as-tab-label {
+  min-width: 0; flex: 1 1 auto;
+  font: inherit; font-size: 11px; padding: 5px 4px 5px 9px; cursor: pointer;
+  text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: none; border: none; color: var(--text-dim);
+}
+.as-tab.is-active .as-tab-label { color: var(--text); }
+
+.as-tab-close {
+  flex: 0 0 auto; font: inherit; font-size: 13px; line-height: 1;
+  padding: 0 7px 2px 3px; cursor: pointer;
+  background: none; border: none; color: transparent;
+}
+.as-tab:hover .as-tab-close { color: var(--text-dim); }
+.as-tab-close:hover { color: var(--danger) !important; }
+
+.as-tab-new {
+  flex: 0 0 auto; align-self: center;
+  font: inherit; font-size: 15px; line-height: 1; padding: 3px 10px;
+  cursor: pointer; background: none; border: none; color: var(--text-dim);
+}
+.as-tab-new:hover { color: var(--text); }
+
+/* A passage attached from the document. It travels as context rather than
+   being pasted into the box, so the message stays what the user typed. */
+.as-attach {
+  display: flex; align-items: center; gap: 7px; flex: 0 0 auto;
+  padding: 6px 10px; font-size: 10.5px;
+  border-top: 1px solid var(--border); background: var(--surface-2);
+}
+.as-attach-badge {
+  flex: 0 0 auto; padding: 1px 8px; border-radius: 999px;
+  background: var(--accent-bg); color: var(--accent);
+  border: 1px solid var(--accent); white-space: nowrap;
+}
+.as-attach-peek {
+  min-width: 0; flex: 1 1 auto; color: var(--text-dim); font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.as-attach button {
+  flex: 0 0 auto; font: inherit; font-size: 13px; line-height: 1; padding: 0 4px;
+  cursor: pointer; background: none; border: none; color: var(--text-dim);
+}
+.as-attach button:hover { color: var(--danger); }
+
+/* Docked into a panel: it fills its container and drops the window chrome. */
+.as-root.is-docked {
+  position: static; width: 100%; height: 100%;
+  border: none; border-radius: 0; box-shadow: none;
+}
+.as-root.is-docked .as-bar { cursor: default; }

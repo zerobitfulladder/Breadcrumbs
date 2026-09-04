@@ -1,0 +1,192 @@
+.rd-root { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+.rd-bar {
+  display: flex; align-items: flex-start; gap: 14px; flex: 0 0 auto;
+  padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.rd-ident { min-width: 0; flex: 1 1 auto; }
+.rd-bar h1 { margin: 0 0 2px; font-size: 15px; line-height: 1.3; }
+.rd-bar p { margin: 0; font-size: 11.5px; color: var(--text-dim); }
+.rd-bar select {
+  flex: 0 0 auto; font: inherit; font-size: 12px; padding: 4px 8px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px;
+}
+
+.rd-split { flex: 1 1 auto; display: flex; min-height: 0; }
+.rd-pdf { flex: 1 1 auto; min-width: 0; background: var(--surface-3); }
+.rd-pdf object { width: 100%; height: 100%; border: none; }
+
+.rd-nopdf {
+  height: 100%; display: flex; flex-direction: column; gap: 10px;
+  align-items: center; justify-content: center; padding: 30px;
+  font-size: 12.5px; color: var(--text); text-align: center;
+}
+.rd-nopdf ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.rd-nopdf a { color: var(--accent); font-size: 12px; }
+.rd-upload {
+  margin-top: 8px; font-size: 12px; padding: 7px 15px; cursor: pointer;
+  border-radius: 6px; background: var(--accent); color: #fff; border: none;
+}
+.rd-upload input { display: none; }
+
+.rd-side { border-left: 1px solid var(--border); background: var(--surface); }
+.rd-notes-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  padding: 14px 16px 40px;
+}
+.rd-side h2 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-dim); margin: 0 0 6px; font-weight: 600;
+}
+.rd-side h2 + * { margin-bottom: 16px; }
+.rd-side textarea {
+  width: 100%; min-height: 220px; font: inherit; font-size: 12.5px; line-height: 1.55;
+  padding: 9px 11px; resize: vertical;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.rd-side textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.rd-saved { font-size: 10.5px; color: var(--text-dim); margin: 4px 0 16px; }
+.rd-abstract { font-size: 12px; line-height: 1.6; margin: 0 0 16px; }
+.rd-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12px; }
+
+.rd-loading, .rd-error { padding: 24px; font-size: 13px; }
+.rd-error { color: var(--danger-fg); background: var(--danger-bg); }
+
+/* pdf.js has no dark mode; inverting the canvas is the standard approach.
+   Figures invert too, which is why it is a toggle rather than automatic. */
+.rd-pdf.is-dark .pv-page canvas { filter: invert(1) hue-rotate(180deg); }
+/* Over an inverted page, multiplying would turn a highlight almost black.
+   Screen lightens instead, which reads the same way round. */
+.rd-pdf.is-dark .pv-mark, .rd-pdf.is-dark .pv-sel { mix-blend-mode: screen; opacity: 0.42; }
+.rd-pdf.is-dark .pv-mark:hover { opacity: 0.6; filter: none; }
+.rd-pdf.is-dark .pv-mark.is-active { opacity: 0.7; filter: none; }
+.rd-pdf.is-dark .pv-root { background: #0f1115; }
+
+.rd-toggle {
+  flex: 0 0 auto; font: inherit; font-size: 11px; padding: 4px 10px; cursor: pointer;
+  border-radius: 5px; background: var(--surface-2); color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.rd-toggle:hover { color: var(--text); border-color: var(--accent); }
+.rd-toggle.is-on { background: var(--accent-bg); color: var(--text); border-color: var(--accent); }
+
+.rd-pdf { display: flex; flex-direction: column; min-width: 0; }
+
+.rd-badge {
+  font-size: 10px; padding: 0 6px; margin-left: 6px; border-radius: 999px;
+  background: var(--surface-3); color: var(--text-dim); font-weight: 500;
+}
+.rd-empty { margin: 0 0 16px; font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
+
+.rd-highlights { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+.rd-highlights li {
+  padding: 7px 9px; border-radius: 6px; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.rd-highlights li.is-active { border-color: var(--accent); background: var(--surface-3); }
+.rd-hl-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.rd-hl-swatch { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
+.rd-hl-page { font-size: 10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.rd-hl-who {
+  font-size: 9px; padding: 0 5px; border-radius: 999px;
+  background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent);
+}
+.rd-hl-del {
+  margin-left: auto; font: inherit; font-size: 13px; line-height: 1; padding: 0 3px;
+  cursor: pointer; background: none; border: none; color: var(--text-dim);
+}
+.rd-hl-del:hover { color: var(--danger); }
+.rd-highlights blockquote {
+  overflow-wrap: anywhere;
+  margin: 0 0 5px; padding-left: 8px; font-size: 11px; line-height: 1.5;
+  border-left: 2px solid var(--border-strong); color: var(--text);
+}
+.rd-hl-note {
+  display: block; width: 100%; font: inherit; font-size: 11px; line-height: 1.45;
+  padding: 4px 6px; resize: none; overflow: hidden;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+}
+
+/* The selection menu, anchored under what you selected. */
+.rd-popover {
+  position: fixed; z-index: 70; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 5px; padding: 5px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 8px; box-shadow: 0 8px 26px rgb(0 0 0 / 0.45);
+}
+.rd-popover button {
+  font: inherit; font-size: 11px; padding: 4px 9px; cursor: pointer;
+  border-radius: 5px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border);
+}
+.rd-popover button:hover { border-color: var(--accent); }
+.rd-colors { display: flex; gap: 3px; }
+.rd-color {
+  width: 18px; height: 18px; padding: 0 !important; border-radius: 4px !important;
+  border: 1px solid rgb(0 0 0 / 0.3) !important; cursor: pointer;
+}
+.rd-color:hover { transform: scale(1.12); }
+
+.rd-note-draft { display: grid; gap: 5px; width: 260px; }
+.rd-note-draft textarea {
+  width: 100%; font: inherit; font-size: 12px; line-height: 1.45; padding: 6px 8px;
+  resize: vertical; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px;
+}
+.rd-note-actions { display: flex; gap: 5px; justify-content: flex-end; }
+.rd-note-actions .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.rd-ask {
+  position: fixed; right: 18px; bottom: 18px; z-index: 60;
+  display: inline-flex; align-items: center; gap: 7px;
+  font: inherit; font-size: 12.5px; font-weight: 500;
+  padding: 9px 18px; cursor: pointer; border-radius: 999px;
+  background: var(--accent); color: #fff; border: none;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+}
+.rd-ask kbd {
+  font: inherit; font-size: 10px; letter-spacing: 0.06em;
+  padding: 1px 5px; border-radius: 4px; background: rgb(255 255 255 / 0.22);
+}
+
+.rd-side { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; }
+
+
+.rd-tabs {
+  display: flex; gap: 3px; flex: 0 0 auto;
+  padding: 6px 10px 0; border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.rd-tabs button {
+  font: inherit; font-size: 11.5px; padding: 5px 12px; cursor: pointer;
+  background: none; color: var(--text-dim);
+  border: 1px solid transparent; border-bottom: none;
+  border-radius: 6px 6px 0 0; margin-bottom: -1px;
+}
+.rd-tabs button:hover { color: var(--text); }
+.rd-tabs button.is-active {
+  color: var(--text); background: var(--surface);
+  border-color: var(--border); border-bottom-color: var(--surface);
+}
+
+.rd-chat { flex: 1 1 auto; min-height: 0; }
+
+.rd-outline { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 1px; }
+.rd-outline button {
+  width: 100%; display: flex; align-items: baseline; gap: 8px;
+  font: inherit; font-size: 11.5px; text-align: left; cursor: pointer;
+  padding: 3px 6px; border-radius: 4px;
+  background: none; color: var(--text); border: 1px solid transparent;
+}
+.rd-outline button:hover { background: var(--surface-2); border-color: var(--border); }
+.rd-outline-title {
+  min-width: 0; flex: 1 1 auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rd-outline-page {
+  flex: 0 0 auto; font-size: 10px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}

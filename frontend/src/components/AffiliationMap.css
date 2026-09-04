@@ -1,0 +1,122 @@
+.am-root { margin-top: 6px; }
+
+.am-head { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.am-head h4 {
+  margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-dim); font-weight: 600;
+}
+.am-count { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+
+.am-canvas {
+  height: 190px; border-radius: 7px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--surface-2);
+}
+
+/* Leaflet ships light-themed chrome; align it with the panel. */
+.am-canvas .leaflet-container { background: var(--surface-2); font: inherit; }
+.am-canvas .leaflet-control-zoom a {
+  background: var(--surface); color: var(--text);
+  border-color: var(--border); width: 22px; height: 22px; line-height: 22px; font-size: 14px;
+}
+.am-canvas .leaflet-control-zoom a:hover { background: var(--surface-3); }
+.am-canvas .leaflet-control-attribution {
+  background: rgb(0 0 0 / 0.4); color: var(--text-dim); font-size: 8.5px; padding: 0 4px;
+}
+.am-canvas .leaflet-control-attribution a { color: var(--text-dim); }
+.am-canvas .leaflet-tooltip {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: 5px;
+  font-size: 10.5px; line-height: 1.45; padding: 5px 8px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+}
+.am-canvas .leaflet-tooltip-top::before { border-top-color: var(--border-strong); }
+
+.am-empty { margin: 7px 0 0; font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+
+.am-legend {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px; font-size: 10px; color: var(--text-dim);
+}
+.am-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 2px solid #4f8ef7; background: rgb(79 142 247 / 0.35);
+}
+.am-dot.is-current { border-color: #10b981; background: rgb(16 185 129 / 0.35); }
+.am-legend .am-dot:not(:first-child) { margin-left: 8px; }
+
+.am-expand {
+  flex: 0 0 auto; font: inherit; font-size: 12px; line-height: 1;
+  padding: 2px 6px; cursor: pointer; border-radius: 4px;
+  background: none; color: var(--text-dim);
+  border: 1px solid transparent;
+}
+.am-expand:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); }
+.am-expand:disabled { opacity: 0.35; cursor: default; }
+
+/* Expanded: a real map to travel on, rather than the sidebar summary. */
+.am-backdrop {
+  position: fixed; inset: 0; z-index: 95;
+  display: grid; place-items: center; padding: 32px;
+  background: rgb(0 0 0 / 0.66); backdrop-filter: blur(2px);
+  animation: am-fade 120ms ease-out;
+}
+@keyframes am-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .am-backdrop { animation: none; } }
+
+.am-modal {
+  display: flex; flex-direction: column;
+  width: min(1200px, 94vw); height: min(760px, 88vh);
+  background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: 9px;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+.am-modal-bar {
+  display: flex; align-items: center; gap: 12px; flex: 0 0 auto;
+  padding: 9px 14px; font-size: 12.5px;
+  border-bottom: 1px solid var(--border); background: var(--surface-2);
+}
+.am-modal-bar .am-count { margin-left: 0; }
+.am-modal-bar .am-legend { margin: 0 0 0 auto; }
+.am-close {
+  flex: 0 0 auto; font: inherit; font-size: 11.5px; padding: 4px 12px;
+  cursor: pointer; border-radius: 5px;
+  background: var(--surface-3); color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.am-close:hover { border-color: var(--accent); }
+
+.am-modal-canvas { flex: 1 1 auto; min-height: 0; }
+.am-modal-canvas .leaflet-container { background: var(--surface-2); font: inherit; }
+.am-modal-canvas .leaflet-control-zoom a {
+  background: var(--surface); color: var(--text);
+  border-color: var(--border); width: 26px; height: 26px; line-height: 26px; font-size: 16px;
+}
+.am-modal-canvas .leaflet-control-zoom a:hover { background: var(--surface-3); }
+.am-modal-canvas .leaflet-control-attribution {
+  background: rgb(0 0 0 / 0.4); color: var(--text-dim); font-size: 9px; padding: 0 5px;
+}
+.am-modal-canvas .leaflet-control-attribution a { color: var(--text-dim); }
+.am-modal-canvas .leaflet-tooltip {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: 5px;
+  font-size: 11.5px; line-height: 1.5; padding: 6px 9px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+}
+.am-modal-canvas .leaflet-tooltip-top::before { border-top-color: var(--border-strong); }
+
+/* Draggable, but the wheel is left to the sidebar. */
+.am-canvas .leaflet-container { cursor: grab; }
+.am-canvas .leaflet-container:active { cursor: grabbing; }
+
+/* OSM tiles are light. Inverting them gives a dark basemap without depending
+   on a metered provider; markers sit outside the tile pane so their colours
+   are unaffected. */
+@media (prefers-color-scheme: dark) {
+  .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
+  }
+}
+:root[data-theme="dark"] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
+}

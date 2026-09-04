@@ -1,0 +1,273 @@
+.tl-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.tl-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.tl-toolbar button {
+  font: inherit;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.tl-toolbar button:hover { background: var(--surface-3); }
+.tl-hint { color: var(--text-dim); font-size: 12px; }
+.tl-count { color: var(--text-dim); font-size: 12px; }
+
+.tl-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.tl-canvas.is-dragging { cursor: grabbing; }
+
+/* Citation lines only appear for the paper in focus, and sit above the boxes
+   so a highlighted connection is never hidden behind one. */
+/* Under the cards, which is why the lines can run centre to centre: their
+   ends are hidden by the cards they join. */
+.tl-edge-layer { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.tl-edge-halo {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 5;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.tl-edge-live {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.95;
+  animation: tl-edge-in 160ms ease-out;
+}
+.tl-edge-live.is-ref  { stroke: var(--link-ref); }
+.tl-edge-live.is-cite { stroke: var(--link-cite); }
+
+/* Legend for the two edge colours. Only worth screen space while edges are
+   actually coloured, so it appears with the focus. */
+.tl-edge-legend { display: inline-flex; align-items: center; gap: 10px; }
+.tl-edge-legend b { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
+.tl-edge-legend i {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.tl-edge-legend .is-ref  { color: var(--link-ref); }
+.tl-edge-legend .is-cite { color: var(--link-cite); }
+
+@keyframes tl-edge-in {
+  from { opacity: 0; }
+  to   { opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-edge-live { animation: none; }
+}
+
+.tl-boxes { position: absolute; inset: 0; z-index: 2; }
+
+.tl-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 8px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+  will-change: transform;
+  transition: opacity 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.tl-box:hover { background: var(--surface-3); }
+
+/* Focus mode: everything unrelated recedes, the paper and its citations lift. */
+.tl-box.is-dimmed {
+  opacity: 0.16;
+  filter: saturate(0.4);
+}
+/* Selection is drawn as a ring outside the card, never by recolouring the
+   border: that colour carries reading status and must stay readable. */
+.tl-box.is-linked {
+  box-shadow: 0 0 0 1px var(--accent-soft), 0 2px 8px rgb(0 0 0 / 0.3);
+  z-index: 1;
+}
+.tl-box.is-active {
+  background: var(--surface-3);
+  outline: 2px solid;                 /* colour comes from the status below */
+  outline-offset: 1px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
+  z-index: 2;
+}
+.tl-box.status-unread.is-active,
+.tl-box.status-archived.is-active { outline-color: var(--border-strong); }
+.tl-box.status-queued.is-active   { outline-color: #3b82f6; }
+.tl-box.status-skimmed.is-active  { outline-color: #f59e0b; }
+.tl-box.status-read.is-active     { outline-color: #10b981; }
+.tl-box {
+  /* Cards are not dragged any more — a card's column is its interval — so the
+     pointer says "click", not "grab". */
+  cursor: pointer;
+  /* Without this a touch or pen drag scrolls the page instead of panning the
+     canvas; the canvas sets it too but it does not inherit. */
+  touch-action: none;
+}
+.tl-box.is-dragging-node {
+  cursor: grabbing;
+  z-index: 4;
+  outline: 2px dashed var(--border-strong);
+  outline-offset: 1px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.5);
+  transition: none;   /* follow the pointer exactly */
+}
+
+.tl-box.is-pinned::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.tl-box-title {
+  font-size: 11.5px;
+  line-height: 1.25;
+  font-weight: 500;
+  /* The box is measured to fit up to four lines; the clamp only catches
+     titles longer than that. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.tl-box-meta {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: var(--text-dim);
+}
+.tl-box-who {
+  min-width: 0; flex: 0 1 auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Never shrinks. On a card too narrow for both, the name gives way and the
+   year survives — it is what the whole view is ordered by. */
+.tl-box-year { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+
+.kind-topic      { border-left-color: #3b82f6; }
+.kind-supplement { border-left-color: #f59e0b; }
+.kind-dataset    { border-left-color: #10b981; }
+.kind-background { border-left-color: #6b7280; }
+.kind-method     { border-left-color: #8b5cf6; }
+
+/* Reading status is the card outline; the left stripe stays with the shelf, so
+   a glance gives both what a paper is and how far you have got with it. */
+.tl-box.status-unread   { border-color: var(--border); }
+.tl-box.status-queued   { border-color: #3b82f6; }
+.tl-box.status-skimmed  { border-color: #f59e0b; }
+.tl-box.status-read     { border-color: #10b981; }
+.tl-box.status-archived { border-color: var(--border); opacity: 0.55; }
+.tl-box.status-archived .tl-box-title { text-decoration: line-through; text-decoration-thickness: 1px; }
+/* "This one you can actually read right now." Filled rather than outlined, so
+   it separates at a glance from the status pill next to it, which is hollow. */
+.tl-pdf {
+  flex: 0 0 auto;
+  font-size: 8.5px; line-height: 1.5; letter-spacing: 0.04em; font-weight: 600;
+  padding: 0 5px; border-radius: 999px;
+  background: var(--ok); color: var(--surface);
+  pointer-events: none;
+}
+
+/* The badge occupies the top-right, so the pin marker moves to the left. */
+.tl-box.is-pinned::after { top: 4px; right: 5px; }
+
+.tl-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  pointer-events: none;
+}
+.tl-count { margin-left: 12px; }
+
+.tl-box {
+  gap: 1px;
+  padding: 4px 6px;
+  justify-content: flex-start;
+}
+.tl-box .tl-box-title {
+  /* Both set from the card size — see cardText(). The line count is what the
+     card actually has room for, so the title is clamped to whole lines with an
+     ellipsis instead of overflowing and being cut mid-line. */
+  font-size: var(--title-font, 9.5px);
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: var(--title-lines, 3);
+  line-clamp: var(--title-lines, 3);
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tl-box .tl-box-meta { font-size: var(--meta-font, 8px); margin-top: auto; }
+.tl-box .tl-box-who { min-width: 0; }
+/* The sort key, so it leads and is legible at this size. */
+.tl-box .tl-box-year { font-weight: 700; font-size: 1.05em; color: var(--text); }
+.tl-box .tl-pdf { font-size: 0.85em; padding: 0 0.5em; }
+
+/* Interval headings above each five-year column. */
+.tl-bins { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+/* An interval with no papers keeps its column so the width stays proportional
+   to time; its label recedes so the run of them reads as a gap. */
+.tl-bin.is-empty { opacity: 0.35; }
+
+.tl-bin {
+  position: absolute; top: 10px; left: 0;
+  font-size: inherit; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--text-dim); text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Interval width control. The readout sits between the buttons so the pair
+   reads as one thing rather than two unrelated steppers. */
+.tl-bin-control { display: inline-flex; align-items: center; gap: 1px; }
+.tl-bin-control button {
+  font: inherit; font-size: 13px; line-height: 1; width: 22px; padding: 4px 0;
+  cursor: pointer; border-radius: 4px;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+}
+.tl-bin-control button:hover:not(:disabled) { border-color: var(--accent); }
+.tl-bin-control button:disabled { opacity: 0.4; cursor: default; }
+.tl-bin-value {
+  min-width: 54px; text-align: center; font-size: 11px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}

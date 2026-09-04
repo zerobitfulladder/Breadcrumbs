@@ -1,0 +1,199 @@
+/* The scroll container is the full pane so its scrollbar sits at the window
+   edge; the readable column is centred inside it. */
+.set-root { height: 100%; overflow-y: auto; }
+.set-inner { max-width: 720px; margin: 0 auto; padding: 20px 24px 60px; }
+.set-root h2 { margin: 0 0 16px; font-size: 18px; }
+.set-root h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-dim); margin: 0 0 10px; font-weight: 600;
+}
+.set-root section { margin-bottom: 26px; }
+
+.set-root label { display: block; margin-bottom: 14px; }
+.set-root label > span { display: block; font-size: 12.5px; margin-bottom: 4px; }
+.set-root label.row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.set-root label.row > span { margin: 0; font-size: 12.5px; }
+
+.set-root input[type="text"], .set-root input[type="email"],
+.set-root input[type="password"], .set-root input[type="number"], .set-root input:not([type]) {
+  width: 100%; font: inherit; padding: 7px 10px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px;
+}
+.set-root input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.set-root small { display: block; margin-top: 4px; color: var(--text-dim);
+                  font-size: 11px; line-height: 1.5; }
+
+.set-actions { display: flex; align-items: center; gap: 9px; margin-bottom: 22px; }
+.set-actions button {
+  font: inherit; padding: 7px 15px; border-radius: 6px; cursor: pointer;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+}
+.set-actions .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.set-actions button:disabled { opacity: 0.5; cursor: default; }
+.set-saved { color: var(--ok); font-size: 12px; }
+
+.set-error {
+  padding: 9px 12px; border-radius: 6px; margin-bottom: 14px; font-size: 12.5px;
+  background: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger-fg);
+}
+
+.set-probe { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 12.5px; }
+.set-probe li { display: flex; align-items: center; gap: 8px; }
+.set-probe .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.set-probe .dot.ok { background: var(--ok); }
+.set-probe .dot.bad { background: var(--danger); }
+
+.set-tabs { display: flex; gap: 3px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+.set-tabs button {
+  font: inherit; font-size: 12.5px; padding: 6px 14px; cursor: pointer;
+  background: none; color: var(--text-dim);
+  border: 1px solid transparent; border-bottom: none;
+  border-radius: 6px 6px 0 0; margin-bottom: -1px;
+}
+.set-tabs button:hover { color: var(--text); }
+.set-tabs button.is-active {
+  color: var(--text); background: var(--surface-2);
+  border-color: var(--border); border-bottom-color: var(--surface-2);
+}
+
+.set-note { font-size: 11.5px; color: var(--text-dim); line-height: 1.55; margin: 0 0 12px; }
+.set-root select {
+  width: 100%; font: inherit; padding: 7px 10px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px;
+}
+.set-ok-dot {
+  display: inline-block; width: 6px; height: 6px; margin-left: 6px;
+  border-radius: 50%; background: var(--ok); vertical-align: middle;
+}
+
+.set-task {
+  border: 1px solid var(--border); border-radius: 7px;
+  padding: 11px 13px; margin-bottom: 11px; background: var(--surface-2);
+}
+.set-task-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.set-task-head label.row { margin: 0; }
+.set-task-head code { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+.set-task-desc { margin: 0 0 9px; font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
+.set-task-row { display: flex; gap: 6px; margin-bottom: 7px; }
+.set-task-row select { flex: 1 1 0; min-width: 0; font-size: 12px; padding: 5px 8px; }
+.set-task-row button {
+  flex: 0 0 auto; font: inherit; font-size: 11px; padding: 5px 11px; cursor: pointer;
+  border-radius: 5px; background: var(--surface-3); color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.set-task-row button:disabled { opacity: 0.5; cursor: default; }
+.set-prompt {
+  width: 100%; margin-top: 7px; font: inherit; font-size: 11px; line-height: 1.5;
+  padding: 8px 10px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px; resize: vertical;
+}
+.set-root button.link {
+  background: none; border: none; padding: 0; color: var(--accent);
+  cursor: pointer; font: inherit; font-size: 11px; text-decoration: underline;
+}
+
+.set-inline { display: flex; gap: 6px; }
+.set-inline select { flex: 1 1 auto; min-width: 0; }
+.set-inline .mp-root { flex: 1 1 auto; min-width: 0; }
+.set-inline button {
+  flex: 0 0 auto; font: inherit; font-size: 11.5px; padding: 6px 12px; cursor: pointer;
+  border-radius: 5px; background: var(--surface-3); color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.set-inline button:disabled { opacity: 0.5; cursor: default; }
+
+.set-count {
+  font-size: 10px; padding: 0 6px; margin-left: 6px; border-radius: 999px;
+  background: var(--surface-3); color: var(--text-dim); font-weight: 500;
+}
+
+.set-caps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.set-caps li {
+  padding: 8px 11px; border-radius: 6px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.set-caps li.is-write { border-left: 3px solid var(--warn); }
+.set-cap-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 3px; }
+.set-cap-head code { font-size: 11.5px; color: var(--text); }
+.set-cap-size, .set-cap-params { font-size: 10px; color: var(--text-dim); }
+.set-cap-write {
+  font-size: 9.5px; padding: 0 6px; border-radius: 999px;
+  background: var(--warn-bg); color: var(--warn-fg); border: 1px solid var(--warn);
+}
+.set-caps p { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--text-dim); }
+
+.set-danger {
+  font: inherit; font-size: 12px; padding: 7px 15px; cursor: pointer;
+  border-radius: 6px; background: var(--danger-bg); color: var(--danger-fg);
+  border: 1px solid var(--danger);
+}
+.set-danger:hover:not(:disabled) { background: var(--danger); color: #fff; }
+.set-danger:disabled { opacity: 0.45; cursor: default; }
+
+.set-confirm {
+  padding: 12px 14px; border-radius: 7px;
+  background: var(--danger-bg); border: 1px solid var(--danger);
+}
+.set-confirm code {
+  font-size: 11px; padding: 1px 5px; border-radius: 3px;
+  background: var(--surface); color: var(--text);
+}
+.set-confirm .set-actions { margin: 10px 0 0; }
+.set-wiped {
+  padding: 9px 12px; border-radius: 6px; font-size: 12.5px;
+  background: var(--ok-bg); border: 1px solid var(--ok); color: var(--ok-fg);
+}
+
+/* --- searchable model picker ------------------------------------------------
+   A combobox rather than a select: OpenRouter alone lists hundreds of models,
+   and the only workable way through that is to type. */
+.mp-root { position: relative; }
+.mp-root.is-disabled { opacity: 0.55; }
+.mp-input { width: 100%; }
+.set-root .mp-input::placeholder { color: var(--text-dim); }
+
+/* Sits over the fields below rather than pushing the form around as you type. */
+.mp-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px #0006;
+}
+.mp-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mp-list li.is-cursor { background: var(--surface-3); }
+.mp-list li.is-chosen .mp-id { color: var(--accent); font-weight: 600; }
+/* Long ids elide rather than widening the list past the field. */
+.mp-id { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+         white-space: nowrap; font-family: ui-monospace, SFMono-Regular, monospace; }
+.mp-meta { flex: 0 0 auto; color: var(--text-dim); font-size: 10.5px; }
+.mp-none { color: var(--text-dim); cursor: default; font-size: 11.5px; }
+
+.mp-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  border: none; background: none; cursor: pointer; padding: 0 4px;
+  color: var(--text-dim); font-size: 15px; line-height: 1;
+}
+.mp-clear:hover { color: var(--text); }
+
+/* A stored choice that no longer applies — worth more than the usual grey. */
+.set-root small.set-warn { color: var(--warn-fg); }

@@ -1,0 +1,91 @@
+.pv-root { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--surface-3); }
+
+.pv-toolbar {
+  display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+  padding: 6px 12px; font-size: 11.5px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.pv-toolbar button {
+  font: inherit; font-size: 13px; line-height: 1; padding: 3px 9px; cursor: pointer;
+  border-radius: 4px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border);
+}
+.pv-toolbar button:hover { border-color: var(--accent); }
+.pv-zoom { font-variant-numeric: tabular-nums; color: var(--text-dim); min-width: 38px; text-align: center; }
+.pv-pages { color: var(--text-dim); }
+.pv-hint { margin-left: auto; color: var(--text-dim); font-size: 10.5px; }
+
+.pv-scroll { flex: 1 1 auto; overflow: auto; padding: 16px 0 40px; }
+
+.pv-page {
+  position: relative; margin: 0 auto 14px; width: max-content;
+  box-shadow: 0 3px 14px rgb(0 0 0 / 0.35);
+}
+.pv-page canvas { display: block; }
+
+/* pdf.js draws invisible text over the canvas. It must stay above the marks,
+   which come later in the DOM, or a drag would hit a highlight instead of
+   selecting words. Its own stacking context does not affect the marks: they
+   blend with the canvas painted beneath them. */
+.pv-page .textLayer { z-index: 2; }
+/* The browser's own selection is hidden: it paints a flat box over each span's
+   full em box, dimming the glyphs and spilling into the next line. The bands
+   drawn in .pv-marks replace it.
+   `color` matters as much as `background`: the text layer's glyphs are
+   transparent, but a browser forces its own selection foreground colour over
+   that — which made the invisible overlay text appear on top of the canvas in
+   a different face, looking like the font had changed mid-selection. */
+.pv-page .textLayer ::selection {
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* No z-index here on purpose. A stacking context would confine the marks'
+   blending to this layer, where the backdrop is transparent — so multiply had
+   nothing to multiply against and the marks painted as flat colour over the
+   text. Without it they blend with the canvas, which is the whole point. */
+.pv-marks { position: absolute; inset: 0; }
+
+/* Multiply rather than a translucent overlay. A semi-opaque box over the
+   canvas washes the glyphs out; multiplying darkens the page beneath exactly
+   the way a marker pen does, so the text stays as crisp as it was. */
+.pv-mark {
+  position: absolute; padding: 0; border: none; cursor: pointer;
+  border-radius: 1px;
+  mix-blend-mode: multiply;
+  transition: filter 110ms ease;
+  pointer-events: auto;
+}
+.pv-mark:hover { filter: saturate(1.5) brightness(0.94); }
+.pv-mark.is-active { filter: saturate(1.7) brightness(0.9); }
+/* A marked passage that carries a note gets an underline, so the two are
+   distinguishable without opening the sidebar. */
+.pv-mark.has-note { box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.35); }
+
+/* The live selection, drawn like a highlight so what you see while dragging
+   is what a highlight would look like. */
+.pv-sel {
+  position: absolute; pointer-events: none;
+  background: #93c5fd; border-radius: 1px;
+  mix-blend-mode: multiply;
+}
+
+.pv-loading, .pv-error { padding: 30px; text-align: center; font-size: 12.5px; color: var(--text-dim); }
+.pv-error { color: var(--danger-fg); }
+
+/* A passage the assistant pointed at. Flashes, then fades: it marks nothing
+   permanently, so it should not linger like a highlight. */
+.pv-reveal {
+  position: absolute; pointer-events: none;
+  background: #f9a8d4; border-radius: 1px;
+  mix-blend-mode: multiply;
+  animation: pv-flash 2.6s ease-out forwards;
+}
+@keyframes pv-flash {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv-reveal { animation: none; opacity: 0.7; }
+}

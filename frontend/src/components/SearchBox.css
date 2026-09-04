@@ -1,0 +1,47 @@
+.sb-root { position: relative; }
+
+.sb-field { display: flex; gap: 8px; align-items: center; }
+.sb-field input {
+  flex: 1 1 auto; min-width: 0; font: inherit; font-size: 14px; padding: 11px 14px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.sb-field input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.sb-field button {
+  flex: 0 0 auto; font: inherit; padding: 11px 20px; border-radius: 6px; cursor: pointer;
+  background: var(--accent); color: #fff; border: 1px solid var(--accent);
+}
+.sb-field button:disabled { opacity: 0.5; cursor: default; }
+
+.sb-spinner {
+  width: 14px; height: 14px; flex: 0 0 auto; margin-left: -34px; margin-right: 20px;
+  border: 2px solid var(--border-strong); border-top-color: var(--accent);
+  border-radius: 50%; animation: sb-spin 0.7s linear infinite;
+}
+@keyframes sb-spin { to { transform: rotate(360deg); } }
+
+.sb-hint { margin-top: 5px; font-size: 11.5px; color: var(--text-dim); }
+
+.sb-list {
+  position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px);
+  margin: 0; padding: 4px; list-style: none;
+  max-height: 340px; overflow-y: auto;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  border-radius: 7px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+.sb-list li {
+  padding: 7px 9px; border-radius: 5px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sb-list li.is-active { background: var(--accent-bg); }
+.sb-title { font-size: 12.5px; line-height: 1.35; }
+.sb-meta { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.sb-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok);
+}
+.sb-foot {
+  cursor: default; font-size: 10.5px; color: var(--text-dim);
+  border-top: 1px solid var(--border); margin-top: 3px; padding-top: 6px;
+}
+.sb-foot:hover { background: none; }

@@ -1,0 +1,8 @@
+.rz-grip {
+  flex: 0 0 5px;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--border);
+  transition: background 110ms ease;
+}
+.rz-grip:hover, .rz-grip.is-active { background: var(--accent); }

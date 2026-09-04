@@ -1,0 +1,107 @@
+.pl-root {
+  flex: 0 0 264px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+.pl-root.is-collapsed { flex-basis: 34px; }
+
+.pl-head {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 8px 8px 12px; flex: 0 0 auto;
+  border-bottom: 1px solid var(--border); font-size: 12.5px;
+}
+.pl-count { color: var(--text-dim); font-size: 11px; }
+.pl-collapse, .pl-toggle {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  color: var(--text-dim); font-size: 15px; line-height: 1; padding: 2px 5px;
+}
+.pl-collapse:hover { color: var(--text); }
+
+.pl-root.is-collapsed .pl-toggle {
+  margin: 0; height: 100%; width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 10px 0; font-size: 11px;
+}
+.pl-toggle-icon { font-size: 15px; }
+.pl-toggle-label { writing-mode: vertical-rl; letter-spacing: 0.04em; }
+.pl-toggle:hover { color: var(--text); background: var(--surface-2); }
+
+.pl-controls { padding: 8px 10px; flex: 0 0 auto; border-bottom: 1px solid var(--border); }
+.pl-controls input {
+  width: 100%; font: inherit; font-size: 12px; padding: 5px 8px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px;
+}
+.pl-controls input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.pl-sorts { display: flex; gap: 3px; margin-top: 6px; }
+.pl-sorts button {
+  flex: 1; font: inherit; font-size: 10.5px; padding: 3px 0; cursor: pointer;
+  text-transform: capitalize; border-radius: 4px;
+  background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
+}
+.pl-sorts button.is-active {
+  background: var(--accent-bg); color: var(--text); border-color: var(--accent);
+}
+/* The arrow is inside the button, so the label must not shift when it appears
+   and disappears — the button is flex:1 and the arrow only takes its own width. */
+.pl-arrow { margin-left: 3px; font-size: 9px; opacity: 0.8; }
+
+.pl-list { list-style: none; margin: 0; padding: 5px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+
+.pl-row { display: flex; align-items: center; gap: 2px; }
+.pl-row .pl-item { flex: 1 1 auto; min-width: 0; }
+
+.pl-item {
+  width: 100%; display: flex; gap: 8px; text-align: left; cursor: pointer;
+  font: inherit; padding: 6px 8px; border-radius: 5px;
+  background: none; color: var(--text); border: 1px solid transparent;
+  transition: background 110ms ease, border-color 110ms ease;
+}
+.pl-item:hover { background: var(--surface-2); }
+.pl-item.is-linked { border-color: var(--accent); }
+.pl-item.is-active { background: var(--accent-bg); border-color: var(--accent); }
+.pl-item.is-pinned .pl-item-year::after {
+  content: "";
+  display: inline-block; width: 4px; height: 4px; margin-left: 4px;
+  border-radius: 50%; background: var(--accent); vertical-align: middle;
+}
+
+.pl-item-year {
+  flex: 0 0 auto; font-size: 10.5px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums; padding-top: 1px; min-width: 30px;
+}
+.pl-item-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pl-item-title {
+  font-size: 11.5px; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.pl-item-meta { font-size: 10px; color: var(--text-dim); }
+
+.pl-empty { padding: 14px 10px; font-size: 11.5px; color: var(--text-dim); text-align: center; }
+
+.pl-modes { display: flex; gap: 2px; }
+.pl-modes button {
+  font: inherit; font-size: 11.5px; padding: 3px 9px; cursor: pointer;
+  border-radius: 4px; background: none; color: var(--text-dim);
+  border: 1px solid transparent;
+}
+.pl-modes button:hover { color: var(--text); background: var(--surface-2); }
+.pl-modes button.is-active {
+  color: var(--text); background: var(--accent-bg); border-color: var(--accent);
+}
+
+/* The map sits below the list and keeps its height: the list scrolls, the map
+   does not get squeezed out of existence. */
+.pl-map {
+  flex: 0 0 auto;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+}
+.pl-map .am-canvas { height: 168px; }
+
+/* An author on the paper currently in focus. */
+.pl-item.is-linked { border-color: var(--accent); background: var(--accent-bg); }

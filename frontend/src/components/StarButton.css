@@ -1,0 +1,15 @@
+.sb-star {
+  flex: 0 0 auto;
+  font: inherit; font-size: 15px; line-height: 1;
+  padding: 2px 4px; cursor: pointer;
+  background: none; border: 1px solid transparent; border-radius: 5px;
+  color: var(--text-dim);
+}
+.sb-star:hover { color: var(--warn); }
+.sb-star.is-on { color: var(--warn); }
+/* Inside a list row: small, and invisible until the row is hovered or it is
+   actually set, so 130 hollow stars do not compete with the titles. */
+.sb-star.is-compact { font-size: 12px; padding: 0 2px; opacity: 0; }
+.sb-star.is-compact.is-on { opacity: 1; }
+.pl-row:hover .sb-star.is-compact,
+.sb-star.is-compact:focus-visible { opacity: 1; }
