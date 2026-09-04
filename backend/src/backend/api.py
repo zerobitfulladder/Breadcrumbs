@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import db, ingest, pdftext, photos, store
@@ -1555,3 +1558,24 @@ def stats(conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, Any]:
         "with_pdf": one("SELECT COUNT(*) FROM papers WHERE pdf_path IS NOT NULL"),
         "library_path": str(db.library_root()),
     }
+
+
+# ---------------------------------------------------------------------------
+# the built frontend, when there is one
+# ---------------------------------------------------------------------------
+# Mounted last, so every /api route above is matched first — a mount at "/"
+# otherwise swallows the lot. Optional by design: in development Vite serves
+# the UI on its own port with hot reload, and this directory does not exist
+# until `make build`. With it, the backend alone serves the whole app.
+def _frontend_dist() -> Path:
+    override = os.environ.get("BREADCRUMBS_STATIC")
+    if override:
+        return Path(override).expanduser()
+    return Path(__file__).resolve().parents[3] / "frontend" / "dist"
+
+
+_DIST = _frontend_dist()
+if (_DIST / "index.html").is_file():
+    # html=True serves index.html for "/", which is all the routing this app
+    # needs — the reader opens as "?paper=12" rather than a path.
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="frontend")

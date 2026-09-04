@@ -19,15 +19,18 @@ of 131 papers carries about 15,000 of these pending edges, waiting.
 
 ## Running it
 
-Two processes, both local.
-
 ```bash
-# backend, on http://127.0.0.1:8000
-cd backend && uv run uvicorn backend.api:app --reload
-
-# frontend, on http://localhost:5173
-cd frontend && npm run dev
+make install    # dependencies, both halves
+make run        # the whole app on http://127.0.0.1:8000, one process
 ```
+
+`make run` builds the frontend and lets the backend serve it, so nothing else
+has to be running — no Node, no second terminal. Node is still needed to
+*produce* the bundle, not to serve it.
+
+For development, `make dev` runs the backend and Vite together with hot reload
+on both, and you open http://localhost:5173 instead. `make help` lists the rest;
+`HOST` and `PORT` override the defaults (`make run PORT=9000`).
 
 Then open Settings and fill in two things:
 
