@@ -349,11 +349,13 @@ export default function Reader({ paperId }: Props) {
           ) : (
           <div className="rd-notes-scroll">
           <h2>Notes</h2>
-          <textarea
+          <AutoTextarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             onBlur={saveNote}
             placeholder="Your notes on this paper…"
+            minRows={3}
+            maxRows={16}
           />
           <div className="rd-saved">{savedAt ? "Saved" : "Saves when you click away"}</div>
 
@@ -470,7 +472,7 @@ export default function Reader({ paperId }: Props) {
             </>
           ) : (
             <div className="rd-note-draft">
-              <textarea
+              <AutoTextarea
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -481,7 +483,8 @@ export default function Reader({ paperId }: Props) {
                   if (e.key === "Escape") setNoteDraft(null);
                 }}
                 placeholder="What about this passage?"
-                rows={3}
+                minRows={2}
+                maxRows={10}
                 autoFocus
               />
               <div className="rd-note-actions">

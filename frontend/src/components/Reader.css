@@ -40,9 +40,13 @@
   color: var(--text-dim); margin: 0 0 6px; font-weight: 600;
 }
 .rd-side h2 + * { margin-bottom: 16px; }
+/* No min-height and no manual resize: every box in this panel measures itself.
+   A floor here silently beat that measurement — min-height overrides height —
+   so a one-line note and an empty prompt both sat 220px tall. It reached the
+   assistant too, which docks inside this panel. */
 .rd-side textarea {
-  width: 100%; min-height: 220px; font: inherit; font-size: 12.5px; line-height: 1.55;
-  padding: 9px 11px; resize: vertical;
+  width: 100%; font: inherit; font-size: 12.5px; line-height: 1.55;
+  padding: 9px 11px; resize: none;
   background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border); border-radius: 6px;
 }
@@ -133,7 +137,7 @@
 .rd-note-draft { display: grid; gap: 5px; width: 260px; }
 .rd-note-draft textarea {
   width: 100%; font: inherit; font-size: 12px; line-height: 1.45; padding: 6px 8px;
-  resize: vertical; background: var(--surface-2); color: var(--text);
+  resize: none; background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border); border-radius: 5px;
 }
 .rd-note-actions { display: flex; gap: 5px; justify-content: flex-end; }

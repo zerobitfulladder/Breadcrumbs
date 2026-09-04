@@ -3,7 +3,7 @@
 A local literature study tool. Papers are added deliberately, one at a time, and
 the graph between them fills in as the library grows.
 
-![The grid view, with a paper selected and its citations drawn](docs/screenshot.png)
+![The grid, with one paper pinned and its references drawn across the columns](docs/grid.png)
 
 ## What makes it different
 
@@ -153,6 +153,8 @@ have. Cards and the detail panel show a **PDF badge** when one is stored.
 There is no pirated-source integration and there will not be one.
 
 ## Reading
+
+![The reader: the assistant marking passages, with its reasoning beside them](docs/reader.png)
 
 The reader opens in its own tab: PDF on the left, a resizable panel on the right
 holding notes and the assistant. Select text to highlight it, attach a note to

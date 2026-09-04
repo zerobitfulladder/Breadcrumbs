@@ -33,11 +33,31 @@ export default function AutoTextarea({
     const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
     const border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
 
-    // Collapse to nothing first. "auto" can resolve against the parent in a
-    // flex or grid row, which reports the row's height as the content height
-    // and pins the box open at its maximum.
+    // Collapse to nothing, and stop the parent from stretching it while we
+    // look. scrollHeight reports the larger of the text and the box's own used
+    // height, so any container that forces a height — a grid cell, which
+    // stretches its items by default, or a column flex parent — makes the box
+    // measure itself and stay at whatever it already was. Clamped to maxRows,
+    // that is a permanently full-height box, which is what this looked like.
+    const borrowed = {
+      height: el.style.height,
+      minHeight: el.style.minHeight,
+      flexGrow: el.style.flexGrow,
+      flexBasis: el.style.flexBasis,
+      alignSelf: el.style.alignSelf,
+    };
     el.style.height = "0px";
+    el.style.minHeight = "0px";
+    el.style.flexGrow = "0";
+    el.style.flexBasis = "auto";
+    el.style.alignSelf = "flex-start";   // "start" in grid: never stretch
+
     const content = el.scrollHeight - padding;
+
+    el.style.minHeight = borrowed.minHeight;
+    el.style.flexGrow = borrowed.flexGrow;
+    el.style.flexBasis = borrowed.flexBasis;
+    el.style.alignSelf = borrowed.alignSelf;
     const clamped = Math.min(Math.max(content, line * minRows), line * maxRows);
     el.style.height = `${clamped + padding + border}px`;
     el.style.overflowY = content > line * maxRows ? "auto" : "hidden";

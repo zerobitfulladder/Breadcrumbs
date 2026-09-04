@@ -553,7 +553,7 @@ export default function Assistant({
             <div key={i} className={`as-turn is-${t.role}`}>
               {t.role === "user" && editing === i && (
                 <div className="as-edit">
-                  <textarea
+                  <AutoTextarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onKeyDown={(e) => {
@@ -566,7 +566,8 @@ export default function Assistant({
                         }
                       }
                     }}
-                    rows={3}
+                    minRows={2}
+                    maxRows={12}
                     autoFocus
                   />
                   <div className="as-edit-actions">

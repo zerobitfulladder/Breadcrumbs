@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,21 @@ def pdf_path(conn: sqlite3.Connection, paper_id: int) -> Path | None:
 def _normalise(text: str) -> str:
     """Collapse whitespace so a quote spanning a line break still matches."""
     return re.sub(r"\s+", " ", text or "").strip()
+
+
+def fold(text: str) -> str:
+    """Lowercase alphanumerics only — the form quotes are matched in.
+
+    Typeset text and quoted text disagree in ways that carry no meaning. A word
+    broken across a line is stored with its hyphen ("hyper-" / "parameters"),
+    quotation marks are curly in one and straight in the other, an en-dash
+    stands in for a hyphen, accents may be composed or not. Dropping everything
+    that is not a letter or a digit removes all of it at once, and closing the
+    gaps is exactly what makes a hyphenated break match the joined word.
+    """
+    text = unicodedata.normalize("NFKD", text or "")
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", "", text.lower())
 
 
 def extract_text(path: Path, max_pages: int = MAX_PAGES_SCANNED) -> list[dict[str, Any]]:
@@ -72,20 +88,39 @@ def outline(path: Path) -> list[dict[str, Any]]:
         ]
 
 
+def _page_index(page: Any) -> tuple[list[Any], str, list[int]]:
+    """A page's words, their text folded into one string, and who owns each character."""
+    words = page.get_text("words")      # (x0, y0, x1, y1, word, block, line, no)
+    parts: list[str] = []
+    owner: list[int] = []
+    for i, word in enumerate(words):
+        folded = fold(word[4])
+        if not folded:
+            continue
+        parts.append(folded)
+        owner.extend([i] * len(folded))
+    return words, "".join(parts), owner
+
+
 def find_quote(
     path: Path, quote: str, page_hint: int | None = None
 ) -> dict[str, Any] | None:
     """Locate a quote and return its rectangles as page fractions.
 
-    Tries the exact string first, then a whitespace-tolerant retry, because a
-    quote copied from extracted text often spans a line break that the PDF
-    itself does not contain.
+    Matching is done on folded text against the page's own words, rather than
+    by searching for the literal string. A literal search fails on anything the
+    typesetter did that the quoter did not reproduce — most often a word broken
+    across a line, where the PDF holds "hyper-" and "parameters" while the quote
+    says "hyperparameters", and no amount of whitespace tolerance closes that.
+
+    Folding both sides to bare alphanumerics makes them comparable, and the
+    per-word positions are still available to turn a match back into rectangles.
     """
     import pymupdf
 
-    wanted = _normalise(quote)
-    if len(wanted) < 4:
-        return None
+    wanted = fold(quote)
+    if len(wanted) < 8:
+        return None                     # too short to identify a passage
 
     with pymupdf.open(path) as doc:
         order = list(range(len(doc)))
@@ -96,21 +131,36 @@ def find_quote(
 
         for index in order[:MAX_PAGES_SCANNED]:
             page = doc[index]
-            rects = page.search_for(wanted)
-            if not rects:
-                # PyMuPDF matches across lines only when the needle has no
-                # newline; a long quote often fails, so retry on a prefix that
-                # is still distinctive.
-                if len(wanted) > 60:
-                    rects = page.search_for(wanted[:60])
-                if not rects:
+            words, hay, owner = _page_index(page)
+            if not hay:
+                continue
+
+            at = hay.find(wanted)
+            length = len(wanted)
+            if at == -1:
+                # A quote running past the end of a column or onto the next
+                # page will not match whole; an opening long enough to be
+                # unambiguous still locates it.
+                if length <= 80:
                     continue
+                at = hay.find(wanted[:80])
+                if at == -1:
+                    continue
+                length = 80
+
+            first = owner[at]
+            last = owner[min(at + length, len(owner)) - 1]
+            rects = [pymupdf.Rect(*words[i][:4]) for i in range(first, last + 1)]
 
             width, height = page.rect.width, page.rect.height
             return {
                 "page": index + 1,
                 "width": width,
                 "height": height,
+                # What the document actually says, which is what should be
+                # stored: it may differ from the quote in exactly the ways the
+                # fold ignored.
+                "text": " ".join(words[i][4] for i in range(first, last + 1)),
                 "rects": _merge_by_line(rects, width, height),
             }
     return None
