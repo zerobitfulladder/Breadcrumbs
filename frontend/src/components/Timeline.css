@@ -127,6 +127,7 @@
 .tl-box.status-unread.is-active,
 .tl-box.status-archived.is-active { outline-color: var(--border-strong); }
 .tl-box.status-queued.is-active   { outline-color: #3b82f6; }
+.tl-box.status-reading.is-active  { outline-color: #a855f7; }
 .tl-box.status-skimmed.is-active  { outline-color: #f59e0b; }
 .tl-box.status-read.is-active     { outline-color: #10b981; }
 .tl-box {
@@ -193,19 +194,26 @@
    a glance gives both what a paper is and how far you have got with it. */
 .tl-box.status-unread   { border-color: var(--border); }
 .tl-box.status-queued   { border-color: #3b82f6; }
+.tl-box.status-reading  { border-color: #a855f7; }
 .tl-box.status-skimmed  { border-color: #f59e0b; }
 .tl-box.status-read     { border-color: #10b981; }
 .tl-box.status-archived { border-color: var(--border); opacity: 0.55; }
 .tl-box.status-archived .tl-box-title { text-decoration: line-through; text-decoration-thickness: 1px; }
 /* "This one you can actually read right now." Filled rather than outlined, so
    it separates at a glance from the status pill next to it, which is hollow. */
+/* A quiet mark, not a label. Filled, it was the loudest thing on a card whose
+   own title is a few pixels tall — and "I have the file" is a footnote to the
+   paper, not a headline. The green still separates it from the meta text. */
 .tl-pdf {
   flex: 0 0 auto;
   font-size: 8.5px; line-height: 1.5; letter-spacing: 0.04em; font-weight: 600;
-  padding: 0 5px; border-radius: 999px;
-  background: var(--ok); color: var(--surface);
+  color: var(--ok);
+  opacity: 0.55;
   pointer-events: none;
 }
+/* Lifts only where the card already has your attention. */
+.tl-box.is-active .tl-pdf,
+.tl-box.is-pinned .tl-pdf { opacity: 0.9; }
 
 /* The badge occupies the top-right, so the pin marker moves to the left. */
 .tl-box.is-pinned::after { top: 4px; right: 5px; }
@@ -242,7 +250,7 @@
 .tl-box .tl-box-who { min-width: 0; }
 /* The sort key, so it leads and is legible at this size. */
 .tl-box .tl-box-year { font-weight: 700; font-size: 1.05em; color: var(--text); }
-.tl-box .tl-pdf { font-size: 0.85em; padding: 0 0.5em; }
+.tl-box .tl-pdf { font-size: 0.8em; }
 
 /* Interval headings above each five-year column. */
 .tl-bins { position: absolute; inset: 0; pointer-events: none; z-index: 2; }

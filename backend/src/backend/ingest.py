@@ -1,8 +1,10 @@
 """Add one paper to the library, by DOI or another identifier.
 
 Adding is always deliberate: exactly one paper row is created per call. The
-paper's references and citations are stored as identifiers only, so links form
-later as you add the other papers yourself.
+paper's references are stored as identifiers only, so links form later as you
+add the other papers yourself. Only references are fetched: a bibliography is
+finite and can be had in full, while "who cites this" is unbounded and any cap
+on it would store an arbitrary slice.
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ import re
 import sqlite3
 import time
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any, AsyncIterator
 
@@ -43,7 +46,6 @@ class Bundle:
     outcomes: dict[str, "SourceOutcome"]
     merged: dict[str, Any]
     references: list[dict[str, Any]] = field(default_factory=list)
-    citations: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     versions: list[dict[str, Any]] = field(default_factory=list)
     edge_notes: dict[str, str] = field(default_factory=dict)
@@ -79,11 +81,9 @@ class IngestResult:
     title: str | None = None
     sources_used: list[str] = field(default_factory=list)
     references_stored: int = 0
-    citations_stored: int = 0
     links_created: int = 0
     pdf_path: str | None = None
     #: A PDF worth fetching once the response has gone out.
-    pdf_pending: str | None = None
     warnings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -93,10 +93,8 @@ class IngestResult:
             "title": self.title,
             "sources_used": self.sources_used,
             "references_stored": self.references_stored,
-            "citations_stored": self.citations_stored,
             "links_created": self.links_created,
             "pdf_path": self.pdf_path,
-            "pdf_pending": bool(self.pdf_pending),
             "warnings": self.warnings,
         }
 
@@ -172,6 +170,71 @@ def _merge_authors(by_source: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
     return base
 
 
+#: A year outside this range is a parsing artefact, not a publication date, and
+#: must never win the earliest-year contest below.
+_YEAR_FLOOR = 1500
+
+
+def _plausible_year(value: Any) -> int | None:
+    """The value as a publication year, or None if it cannot be one."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if _YEAR_FLOOR <= value <= date.today().year + 1 else None
+
+
+def date_from_earliest(by_source: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Pick the publication date from whichever source reports the earliest year.
+
+    Sources routinely describe different artefacts of one work under a single
+    identifier. ALVINN is a NIPS 1988 paper, but CMU deposited a scan in 2018
+    and OpenAlex holds only that deposit, dated 2018; Semantic Scholar still
+    has 1988. A work cannot predate its own publication, so the earliest year
+    any source reports is the one closest to when the idea actually appeared.
+
+    Year and month are taken together, from the same record. Merging them
+    field by field is what produced the incoherent "June 2018, NIPS" record
+    this replaces: a month belonging to a date the paper does not carry.
+
+    Returns the chosen year and month plus, when sources disagreed, the losing
+    years by source so the caller can say so.
+    """
+    dated = [
+        (year, name, rec)
+        for name, rec in by_source.items()
+        if rec and (year := _plausible_year(rec.get("year"))) is not None
+    ]
+    if not dated:
+        return {}
+
+    # Ties go to _MERGE_ORDER, so a year two sources agree on keeps the
+    # richer record's month rather than depending on dict ordering.
+    rank = {name: i for i, name in enumerate(_MERGE_ORDER)}
+    year, name, rec = min(dated, key=lambda d: (d[0], rank.get(d[1], len(rank))))
+
+    out: dict[str, Any] = {"year": year, "month": rec.get("month"), "year_source": name}
+    others = {n: y for y, n, _ in dated if y != year}
+    if others:
+        out["year_disagreement"] = {**others, name: year}
+    return out
+
+
+def year_disagreement_warning(merged: dict[str, Any]) -> str | None:
+    """Say so when sources dated the same identifier differently.
+
+    The earliest is taken, but silently rewriting a date the user can see on
+    the PDF in front of them is worse than saying which sources disagreed.
+    """
+    spread = merged.get("year_disagreement")
+    if not spread:
+        return None
+    chosen = merged.get("year")
+    listed = ", ".join(f"{name} {year}" for name, year in sorted(spread.items()))
+    return (
+        f"Sources disagree on the year ({listed}). Kept {chosen}, the earliest: a later "
+        "date on the same identifier is usually a reprint or a digitised deposit."
+    )
+
+
 def merge_records(by_source: dict[str, dict[str, Any]]) -> dict[str, Any]:
     merged: dict[str, Any] = {}
     for source in _MERGE_ORDER:
@@ -191,6 +254,11 @@ def merge_records(by_source: dict[str, dict[str, Any]]) -> dict[str, Any]:
     for key in _S2_ONLY:
         if s2_rec.get(key) not in (None, "", []):
             merged[key] = s2_rec[key]
+
+    # Date last, over whatever the field-by-field pass left, so year and month
+    # come from one record instead of from whichever source happened to fill
+    # each field first.
+    merged.update(date_from_earliest(by_source))
 
     merged["authors"] = _merge_authors(by_source)
     merged["topics"] = (by_source.get("openalex") or {}).get("topics") or []
@@ -222,7 +290,7 @@ def _edge_keys(rec: dict[str, Any]) -> list[str]:
 def merge_edge_lists(
     primary: list[dict[str, Any]], secondary: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    """Combine two reference/citation lists, de-duplicated on any shared id.
+    """Combine two reference lists, de-duplicated on any shared id.
 
     Semantic Scholar contributes the citation context and intent; OpenAlex
     contributes coverage and DOIs. Neither alone is complete: S2 returns no
@@ -378,57 +446,6 @@ async def _gather_sources(
     return outcomes
 
 
-PDF_TIMEOUT_S = 25.0
-
-
-async def download_pdf_later(paper_id: int, url: str) -> None:
-    """Fetch a paper's PDF after it has been saved.
-
-    Not part of the save. Open-access links rot, and a dead host does not
-    refuse a connection — it simply never answers, so the request runs to its
-    timeout. Doing this inline made adding a paper hang for the length of that
-    timeout on nothing more than a stale link.
-    """
-    try:
-        async with make_client() as client:
-            resp = await client.get(url, timeout=PDF_TIMEOUT_S, follow_redirects=True)
-            body = resp.content
-        if resp.status_code >= 400 or not body.startswith(b"%PDF"):
-            return
-        rel = f"pdfs/{paper_id}.pdf"
-        (db.library_root() / rel).write_bytes(body)
-        with db.session() as conn:
-            conn.execute(
-                "UPDATE papers SET pdf_path = ? WHERE id = ? AND pdf_path IS NULL",
-                (rel, paper_id),
-            )
-        log.info("stored pdf for paper %s (%d bytes)", paper_id, len(body))
-    except Exception as exc:
-        # A missing PDF is normal and the paper is already saved; there is
-        # nothing here worth interrupting the user for.
-        log.info("no pdf for paper %s: %s", paper_id, exc)
-
-
-async def _download_pdf(
-    client: httpx.AsyncClient, url: str, paper_id: int, warnings: list[str]
-) -> str | None:
-    try:
-        resp = await client.get(url, timeout=PDF_TIMEOUT_S)
-        resp.raise_for_status()
-    except httpx.HTTPError as exc:
-        warnings.append(f"pdf download failed: {exc}")
-        return None
-
-    body = resp.content
-    if not body.startswith(b"%PDF"):
-        warnings.append("pdf download skipped: response was not a PDF")
-        return None
-
-    rel = f"pdfs/{paper_id}.pdf"
-    (db.library_root() / rel).write_bytes(body)
-    return rel
-
-
 # ---------------------------------------------------------------------------
 # entry point
 # ---------------------------------------------------------------------------
@@ -482,47 +499,24 @@ async def fetch_bundle(
         merged = merge_records(by_source)
         if not merged.get("title"):
             raise LookupError("Sources returned no title; refusing to store the record.")
+        if (note := year_disagreement_warning(merged)):
+            warnings.append(note)
 
         references: list[dict[str, Any]] = []
-        citations: list[dict[str, Any]] = []
         s2_ident = merged.get("s2_id") or (f"DOI:{merged['doi']}" if merged.get("doi") else None)
-        limit = int(settings.get("citation_page_limit") or 500)
 
-        if s2_ident:
-            if settings.get("fetch_references", "1") == "1":
-                try:
-                    references = await s2.fetch_references(client, s2_ident, s2_key, limit)
-                except SourceError as exc:
-                    warnings.append(f"references unavailable: {exc}")
-            if settings.get("fetch_citations", "1") == "1":
-                try:
-                    citations = await s2.fetch_citations(client, s2_ident, s2_key, limit)
-                except SourceError as exc:
-                    warnings.append(f"Semantic Scholar citations unavailable: {exc}")
-
-        # Citing papers from OpenAlex. Without a Semantic Scholar key that
-        # source throttles constantly, and OpenAlex covers the same edges; what
-        # is lost is the context sentence and intent, not the graph itself.
-        oa_id = merged.get("openalex_id")
-        if oa_id and settings.get("fetch_citations", "1") == "1" and len(citations) < limit:
+        if s2_ident and settings.get("fetch_references", "1") == "1":
             try:
-                oa_citing = await openalex.fetch_citing(client, oa_id, email, limit)
-                before = len(citations)
-                citations = merge_edge_lists(citations, oa_citing)
-                if not before and citations:
-                    warnings.append(
-                        f"Citing papers came from OpenAlex ({len(citations)}); they carry no "
-                        "citation context or intent, which only Semantic Scholar provides."
-                    )
+                references = await s2.fetch_references(client, s2_ident, s2_key)
             except SourceError as exc:
-                warnings.append(f"OpenAlex citations unavailable: {exc}")
+                warnings.append(f"references unavailable: {exc}")
 
         # OpenAlex returns references as bare W-ids. Resolve them to real
         # records so they carry DOIs and titles, then merge with the S2 list.
         oa_refs = (by_source.get("openalex") or {}).get("referenced_works") or []
         if oa_refs and settings.get("fetch_references", "1") == "1":
             try:
-                works = await openalex.fetch_works_batch(client, oa_refs[:limit], email)
+                works = await openalex.fetch_works_batch(client, oa_refs, email)
                 oa_records = [
                     {
                         "doi": w.get("doi"),
@@ -547,7 +541,7 @@ async def fetch_bundle(
 
     return Bundle(
         kind=kind, value=value, by_source=by_source, outcomes=outcomes, merged=merged,
-        references=references, citations=citations, warnings=warnings,
+        references=references, warnings=warnings,
     )
 
 
@@ -587,10 +581,10 @@ def preview_payload(conn: sqlite3.Connection, bundle: Bundle) -> dict[str, Any]:
     per_source = {name: outcome.as_dict() for name, outcome in bundle.outcomes.items()}
 
     # Links that appear the moment you save, counted from both directions:
-    #  - outgoing: this paper's references/citations already in the library
-    #  - incoming: papers already here whose stored references/citations name
-    #    this paper. Missing this second side under-reported the real total.
-    outgoing = count_outgoing_links(conn, bundle.references + bundle.citations)
+    #  - outgoing: this paper's references already in the library
+    #  - incoming: papers already here whose stored references name this paper.
+    #    Missing this second side under-reported the real total.
+    outgoing = count_outgoing_links(conn, bundle.references)
     incoming = count_incoming_links(conn, merged)
     would_link = outgoing + incoming
 
@@ -605,7 +599,6 @@ def preview_payload(conn: sqlite3.Connection, bundle: Bundle) -> dict[str, Any]:
         "source_names": sorted(bundle.by_source),
         "counts": {
             "references": len(bundle.references),
-            "citations": len(bundle.citations),
             "authors": len(merged.get("authors") or []),
             "would_link_now": would_link,
             "would_link_outgoing": outgoing,
@@ -621,13 +614,12 @@ def preview_payload(conn: sqlite3.Connection, bundle: Bundle) -> dict[str, Any]:
         ),
         "edge_notes": bundle.edge_notes,
         "refetchable": list(REFETCHABLE),
-        "sample_citations": bundle.citations[:20],
         "sample_references": bundle.references[:20],
         "warnings": bundle.warnings,
     }
 
 
-REFETCHABLE = ALL_SOURCES + ("references", "citations")
+REFETCHABLE = ALL_SOURCES + ("references",)
 
 
 async def stream_bundle(
@@ -655,7 +647,6 @@ async def stream_bundle(
         settings = db.get_settings(conn)
     email = settings.get("contact_email", "").strip()
     s2_key = settings.get("semantic_scholar_key", "").strip()
-    limit = int(settings.get("citation_page_limit") or 500)
 
     warnings: list[str] = []
     if not email:
@@ -741,6 +732,8 @@ async def stream_bundle(
         if not merged.get("title"):
             yield "error", {"message": "Sources returned no title.", "kind": "no_title"}
             return
+        if (note := year_disagreement_warning(merged)):
+            warnings.append(note)
         with db.session() as counting:
             incoming = count_incoming_links(counting, merged)
         # Reported now rather than at the end: this half of the figure depends
@@ -773,10 +766,10 @@ async def stream_bundle(
                     "error": version_error,
                 }
 
-        # References and citations, each reported as it completes.
+        # References, reported as they complete.
         if settings.get("fetch_references", "1") == "1":
             yield "edges_pending", {"which": "references"}
-            await _refetch_edges(client, "references", bundle, email, s2_key, limit)
+            await _refetch_edges(client, "references", bundle, email, s2_key)
             with db.session() as counting:
                 held = count_outgoing_links(counting, bundle.references)
             yield "edges", {
@@ -784,18 +777,6 @@ async def stream_bundle(
                 "count": len(bundle.references),
                 "note": bundle.edge_notes.get("references", ""),
                 "sample": bundle.references[:20],
-                "would_link_outgoing": held,
-            }
-        if settings.get("fetch_citations", "1") == "1":
-            yield "edges_pending", {"which": "citations"}
-            await _refetch_edges(client, "citations", bundle, email, s2_key, limit)
-            with db.session() as counting:
-                held = count_outgoing_links(counting, bundle.citations)
-            yield "edges", {
-                "which": "citations",
-                "count": len(bundle.citations),
-                "note": bundle.edge_notes.get("citations", ""),
-                "sample": bundle.citations[:20],
                 "would_link_outgoing": held,
             }
 
@@ -850,7 +831,6 @@ async def refetch_source(
     settings = db.get_settings(conn)
     email = settings.get("contact_email", "").strip()
     s2_key = settings.get("semantic_scholar_key", "").strip()
-    limit = int(settings.get("citation_page_limit") or 500)
     merged = bundle.merged
     doi = ids.norm_doi(merged.get("doi")) or (bundle.value if bundle.kind == "doi" else None)
 
@@ -864,7 +844,7 @@ async def refetch_source(
             if bundle.by_source:
                 bundle.merged = merge_records(bundle.by_source)
         else:
-            await _refetch_edges(client, source, bundle, email, s2_key, limit)
+            await _refetch_edges(client, source, bundle, email, s2_key)
 
     bundle.warnings = [
         f"{o.name}: {o.detail}" for o in bundle.outcomes.values() if o.status == "error"
@@ -913,14 +893,17 @@ async def _refetch_one(
 
 async def _refetch_edges(
     client: httpx.AsyncClient, which: str, bundle: Bundle,
-    email: str, s2_key: str, limit: int,
+    email: str, s2_key: str,
 ) -> None:
-    """Pull the reference or citation list.
+    """Pull the reference list, complete.
 
     OpenAlex is the source. It covers the same edges as Semantic Scholar, is
     not rate limited with a contact email set, and returns DOIs and titles that
     make each row matchable and readable. Semantic Scholar is a fallback for
     the rare paper OpenAlex does not hold.
+
+    `which` is always "references"; it is kept because the refetch endpoint
+    addresses this by name alongside the individual sources.
     """
     merged = bundle.merged
     oa_id = merged.get("openalex_id")
@@ -929,17 +912,12 @@ async def _refetch_edges(
 
     if oa_id:
         try:
-            if which == "references":
-                work = await openalex.fetch_by_id(client, oa_id, email)
-                refs = (work or {}).get("referenced_works") or []
-                if refs:
-                    works = await openalex.fetch_works_batch(client, refs[:limit], email)
-                    collected = [_edge_from_work(w) for w in works]
-                    notes.append(f"OpenAlex returned {len(collected)} of {len(refs)}")
-            else:
-                collected = await openalex.fetch_citing(client, oa_id, email, limit)
-                if collected:
-                    notes.append(f"OpenAlex returned {len(collected)}")
+            work = await openalex.fetch_by_id(client, oa_id, email)
+            refs = (work or {}).get("referenced_works") or []
+            if refs:
+                works = await openalex.fetch_works_batch(client, refs, email)
+                collected = [_edge_from_work(w) for w in works]
+                notes.append(f"OpenAlex returned {len(collected)} of {len(refs)}")
         except SourceError as exc:
             notes.append(f"OpenAlex failed ({exc})")
 
@@ -950,17 +928,13 @@ async def _refetch_edges(
             s2_ident = f"DOI:{doi}"
         if s2_ident:
             try:
-                fetch = s2.fetch_references if which == "references" else s2.fetch_citations
-                collected = await fetch(client, s2_ident, s2_key, limit)
+                collected = await s2.fetch_references(client, s2_ident, s2_key)
                 if collected:
                     notes.append(f"Semantic Scholar fallback returned {len(collected)}")
             except SourceError as exc:
                 notes.append(f"Semantic Scholar fallback failed ({exc})")
 
-    if which == "references":
-        bundle.references = collected or bundle.references
-    else:
-        bundle.citations = collected or bundle.citations
+    bundle.references = collected or bundle.references
     bundle.edge_notes[which] = "; ".join(notes) or "nothing returned"
 
 
@@ -990,18 +964,16 @@ async def save_bundle(conn: sqlite3.Connection, bundle: Bundle) -> IngestResult:
     result.title = merged.get("title")
     result.sources_used = merged.get("sources") or sorted(bundle.by_source)
 
-    result.references_stored = store.store_pending(conn, paper_id, "reference", bundle.references)
-    result.citations_stored = store.store_pending(conn, paper_id, "citation", bundle.citations)
+    result.references_stored = store.store_pending(conn, paper_id, bundle.references)
     result.links_created = store.resolve_links(conn, paper_id)
 
-    pdf_url = merged.get("oa_pdf_url")
+    # No PDF is fetched here. Adding a paper records metadata and stops; the
+    # file is found later, on request, by pdffind.search — which walks every
+    # known location and shows its work, instead of silently trying the one
+    # ranked-best URL and storing nothing when it turned out to be a landing page.
     row = conn.execute("SELECT pdf_path FROM papers WHERE id = ?", (paper_id,)).fetchone()
     if row and row["pdf_path"]:
         result.pdf_path = row["pdf_path"]
-    elif settings.get("auto_download_pdf", "1") == "1" and pdf_url:
-        # Handed to the caller to run after responding. The paper is saved
-        # either way; the file is not worth waiting on.
-        result.pdf_pending = pdf_url
 
     return result
 

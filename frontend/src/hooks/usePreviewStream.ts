@@ -23,7 +23,6 @@ export interface PreviewState {
   /** Set when the check for other records of the same work failed. */
   versionsError: string | null;
   refs: EdgeState;
-  cites: EdgeState;
   preview: Preview | null;
 }
 
@@ -44,7 +43,6 @@ export function usePreviewStream() {
     versions: [],
     versionsError: null,
     refs: EMPTY_EDGES,
-    cites: EMPTY_EDGES,
     preview: null,
   });
 
@@ -63,7 +61,6 @@ export function usePreviewStream() {
       versions: [],
       versionsError: null,
       refs: EMPTY_EDGES,
-      cites: EMPTY_EDGES,
       preview: null,
     });
   }, []);
@@ -84,7 +81,6 @@ export function usePreviewStream() {
         versions: [],
         versionsError: null,
         refs: EMPTY_EDGES,
-        cites: EMPTY_EDGES,
         preview: null,
       }));
 
@@ -100,23 +96,11 @@ export function usePreviewStream() {
         onMerged: (d) => setState((s) => ({ ...s, merged: d.merged })),
         onVersions: (d) =>
           setState((s) => ({ ...s, versions: d.versions, versionsError: d.error ?? null })),
-        onEdgesPending: (which) =>
-          setState((s) => ({
-            ...s,
-            [which === "references" ? "refs" : "cites"]: {
-              ...(which === "references" ? s.refs : s.cites),
-              loading: true,
-            },
-          })),
+        onEdgesPending: () => setState((s) => ({ ...s, refs: { ...s.refs, loading: true } })),
         onEdges: (d) =>
           setState((s) => ({
             ...s,
-            [d.which === "references" ? "refs" : "cites"]: {
-              loading: false,
-              count: d.count,
-              note: d.note,
-              sample: d.sample,
-            },
+            refs: { loading: false, count: d.count, note: d.note, sample: d.sample },
           })),
         onDone: (p) => setState((s) => ({ ...s, preview: p, streaming: false })),
         onError: async (message) => {
@@ -170,12 +154,6 @@ export function usePreviewStream() {
             count: next.counts.references,
             note: next.edge_notes?.references ?? "",
             sample: next.sample_references,
-          },
-          cites: {
-            loading: false,
-            count: next.counts.citations,
-            note: next.edge_notes?.citations ?? "",
-            sample: next.sample_citations,
           },
         }));
       } catch (e) {

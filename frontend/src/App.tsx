@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, ApiError } from "./api";
-import type { AuthorRow, ChatContext, Paper, Shelf, TimelinePaper, LinkRow } from "./api";
+import { api, ApiError, STATIC_MODE } from "./api";
+import type {
+  AuthorRow,
+  ChatContext,
+  Highlight,
+  Paper,
+  Shelf,
+  TimelinePaper,
+  LinkRow,
+} from "./api";
 import { onChange, notifyChange } from "./live";
 import { STATUSES, statusLabel } from "./status";
 import AddPaper from "./components/AddPaper";
+import About from "./components/About";
+import Abstract from "./components/Abstract";
+import Markdown from "./components/Markdown";
 import Assistant from "./components/Assistant";
 import AuthorChip from "./components/AuthorChip";
 import AuthorPanel from "./components/AuthorPanel";
+import FindPdf from "./components/FindPdf";
 import PaperList from "./components/PaperList";
 import PaperNotes from "./components/PaperNotes";
 import Resizer, { useStoredWidth } from "./components/Resizer";
@@ -20,6 +32,14 @@ import AttachPdf from "./components/AttachPdf";
 import StarButton from "./components/StarButton";
 
 type Tab = "timeline" | "add" | "settings";
+
+/**
+ * A published copy has no backend, so everything that writes is gone: adding
+ * papers, settings, the assistant, the reader (there are no PDFs), and every
+ * edit control. What remains is the library itself — papers, authors, notes
+ * and the links between them — which is the part worth sharing.
+ */
+const TABS: Tab[] = STATIC_MODE ? ["timeline"] : ["timeline", "add", "settings"];
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("timeline");
@@ -43,6 +63,10 @@ export default function App() {
    */
   const [listHoverId, setListHoverId] = useState<number | null>(null);
   const [detail, setDetail] = useState<Paper | null>(null);
+  /** The selected paper's marked passages, shown beside it. */
+  const [marks, setMarks] = useState<Highlight[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [askDraft, setAskDraft] = useState<string | null>(null);
   /** Bumped on every change, so panels holding their own data refetch. */
@@ -160,6 +184,30 @@ export default function App() {
     }
   }, []);
 
+  /** Remove a paper as though it had never been added.
+   *
+   * The backend takes its references, links, highlights and stored PDF, plus
+   * any author or institution no other paper still uses. Papers that cite this
+   * one keep the reference; it simply goes back to being one you do not hold.
+   */
+  const removePaper = useCallback(
+    async (paperId: number) => {
+      setDeleting(true);
+      try {
+        await api.deletePaper(paperId);
+        setConfirmDelete(null);
+        setSelectedId((current) => (current === paperId ? null : current));
+        setDetail(null);
+        await refresh();
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : String(e));
+      } finally {
+        setDeleting(false);
+      }
+    },
+    [refresh],
+  );
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -178,6 +226,7 @@ export default function App() {
   useEffect(() => {
     if (selectedId == null) {
       setDetail(null);
+      setMarks([]);
       return;
     }
     let cancelled = false;
@@ -185,6 +234,13 @@ export default function App() {
       .paper(selectedId)
       .then((p) => !cancelled && setDetail(p))
       .catch(() => !cancelled && setDetail(null));
+    // Read beside the paper, not only inside the reader. A marked passage is
+    // the reading itself, and it is the only trace of it left on a copy with
+    // no PDF behind it.
+    api
+      .highlights(selectedId)
+      .then((d) => !cancelled && setMarks(d.highlights))
+      .catch(() => !cancelled && setMarks([]));
     return () => {
       cancelled = true;
     };
@@ -195,13 +251,14 @@ export default function App() {
       <header className="app-bar">
         <span className="app-name">Breadcrumbs</span>
         <nav>
-          {(["timeline", "add", "settings"] as Tab[]).map((t) => (
+          {TABS.map((t) => (
             <button key={t} className={tab === t ? "is-active" : ""} onClick={() => setTab(t)}>
               {t === "add" ? "Add paper" : t[0].toUpperCase() + t.slice(1)}
             </button>
           ))}
         </nav>
         <span className="app-count">{papers.length} in library</span>
+{!STATIC_MODE && (
         <button
           className="app-bread"
           onClick={() => setAssistantOpen((v) => !v)}
@@ -209,6 +266,7 @@ export default function App() {
         >
           <kbd>⇧⇧</kbd> for Bread
         </button>
+        )}
       </header>
 
       {error && <div className="app-error">{error}</div>}
@@ -320,6 +378,7 @@ export default function App() {
                 <label className="app-status">
                   <span>Status</span>
                   <select
+                    disabled={STATIC_MODE}
                     value={detail.status}
                     onChange={async (e) => {
                       const status = e.target.value;
@@ -344,20 +403,81 @@ export default function App() {
                     </li>
                   ))}
                 </ul>
-                <button className="app-open-reader" onClick={() => openReader(detail.id)}>
-                  Open in reader
-                </button>
+                {/* The reader is the PDF; a published copy has none. */}
+                {!STATIC_MODE && (
+                  <button className="app-open-reader" onClick={() => openReader(detail.id)}>
+                    Open in reader
+                  </button>
+                )}
                 {detail.pdf_path && (
                   <a className="app-pdf" href={api.pdfUrl(detail.id)} target="_blank" rel="noreferrer">
                     Open PDF
                   </a>
                 )}
-                <AttachPdf paperId={detail.id} hasPdf={!!detail.pdf_path} />
-                <PaperNotes
-                  paperId={detail.id}
-                  initialNote={detail.note ?? ""}
-                  onOpenReader={openReader}
-                />
+                {!STATIC_MODE && (
+                  <>
+                    <FindPdf paperId={detail.id} hasPdf={!!detail.pdf_path} />
+                    <AttachPdf paperId={detail.id} hasPdf={!!detail.pdf_path} />
+                  </>
+                )}
+                {/* The note is still shown — it is the reading, and the point
+                    of publishing — but only as text once nothing can save it. */}
+                {STATIC_MODE ? (
+                  detail.note ? (
+                    <div className="app-note-ro">
+                      <Markdown>{detail.note}</Markdown>
+                    </div>
+                  ) : null
+                ) : (
+                  <PaperNotes
+                    paperId={detail.id}
+                    initialNote={detail.note ?? ""}
+                    onOpenReader={openReader}
+                  />
+                )}
+
+                {!!detail.abstract && (
+                  <details className="app-abstract">
+                    <summary>Abstract</summary>
+                    <Abstract text={detail.abstract} />
+                  </details>
+                )}
+
+                {marks.length > 0 && (
+                  <div className="app-marks">
+                    <h4>
+                      Marked passages <span className="app-marks-n">{marks.length}</span>
+                    </h4>
+                    <ul>
+                      {marks.map((m) => (
+                        <li
+                          key={m.id}
+                          // Clicking opens the reader at that passage. Without a
+                          // PDF there is nowhere to go, so it stays plain text.
+                          className={STATIC_MODE ? "" : "is-clickable"}
+                          onClick={
+                            STATIC_MODE ? undefined : () => openReader(detail.id, m.id)
+                          }
+                        >
+                          <span className="app-mark-page" style={{ background: m.color ?? "#fde047" }}>
+                            p{m.page}
+                          </span>
+                          <span className="app-mark-body">
+                            {m.quoted && <q>{m.quoted}</q>}
+                            {m.comment && (
+                              <div className="app-mark-note">
+                                <Markdown>{m.comment}</Markdown>
+                              </div>
+                            )}
+                            {!m.quoted && !m.comment && (
+                              <span className="app-mark-note">Marked area</span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <ReferenceList
                   paperId={detail.id}
@@ -365,6 +485,38 @@ export default function App() {
                   onOpenPaper={toggle}
                 />
 
+                {!STATIC_MODE && (
+                <div className="app-danger">
+                  {confirmDelete === detail.id ? (
+                    <>
+                      <p className="app-danger-note">
+                        Remove this paper, its references, links, highlights and stored PDF,
+                        and any author no other paper credits. Papers that cite it keep the
+                        reference. This cannot be undone.
+                      </p>
+                      <div className="app-danger-row">
+                        <button
+                          className="app-danger-go"
+                          disabled={deleting}
+                          onClick={() => void removePaper(detail.id)}
+                        >
+                          {deleting ? "Deleting…" : "Delete permanently"}
+                        </button>
+                        <button disabled={deleting} onClick={() => setConfirmDelete(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button
+                      className="app-danger-open"
+                      onClick={() => setConfirmDelete(detail.id)}
+                    >
+                      Delete this paper
+                    </button>
+                  )}
+                </div>
+                )}
               </aside>
             )}
           </div>
@@ -382,6 +534,7 @@ export default function App() {
         />
       )}
 
+      {!STATIC_MODE && (
       <Assistant
         open={assistantOpen}
         onOpenChange={setAssistantOpen}
@@ -390,6 +543,9 @@ export default function App() {
         onDraftUsed={() => setAskDraft(null)}
         onChanged={() => void refresh()}
       />
+      )}
+
+      {STATIC_MODE && <About />}
     </div>
   );
 }

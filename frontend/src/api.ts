@@ -2,6 +2,100 @@
 
 const BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
+/**
+ * Read a frozen copy of the library instead of talking to a backend.
+ *
+ * Set at build time by `make pages`, which exports every GET response this
+ * client makes into a tree of JSON files. There is no server behind the
+ * published site, so anything that would change the library is refused here
+ * rather than failing later with a network error nobody can act on.
+ */
+export const STATIC_MODE = import.meta.env.VITE_STATIC === "1";
+/** Where those files live, relative to the page. */
+const STATIC_BASE = import.meta.env.VITE_STATIC_BASE ?? "./data";
+
+/** A file in the frozen export, by name. */
+export function staticUrl(name: string): string {
+  return `${STATIC_BASE}/${name}`;
+}
+
+/** The published copy's own settings, from pages.json at export time. */
+export interface SiteConfig {
+  repo_url: string;
+  owner: string;
+  title: string;
+  intro: string;
+}
+
+/**
+ * Read the frozen library out of its bundles.
+ *
+ * The export is three files, not one per endpoint: a library this size would
+ * otherwise be over a thousand of them, and opening a paper would cost a round
+ * trip. Bundled, a static host compresses and caches the lot, and everything
+ * after the first click comes from memory.
+ *
+ * They are fetched on demand and only once. Someone who looks at the timeline
+ * and leaves never downloads the papers or the authors.
+ */
+const bundles = new Map<string, Promise<Record<string, unknown>>>();
+
+function bundle(name: string): Promise<Record<string, unknown>> {
+  let pending = bundles.get(name);
+  if (!pending) {
+    pending = fetch(`${STATIC_BASE}/${name}.json`).then((r) => {
+      if (!r.ok) throw new ApiError(`Missing ${name} in this copy of the library`, r.status);
+      return r.json() as Promise<Record<string, unknown>>;
+    });
+    // Not cached on failure: a bundle that failed once because the network
+    // blinked should be retried, not remembered as missing for the session.
+    pending.catch(() => bundles.delete(name));
+    bundles.set(name, pending);
+  }
+  return pending;
+}
+
+/** Where in the bundles an API path lives, or null if it is not published. */
+function staticLookup(path: string): { file: string; keys: string[] } | null {
+  const route = path.split("?")[0].replace(/^\/api\//, "").replace(/\/$/, "");
+  const parts = route.split("/");
+
+  if (parts[0] === "papers" && parts[1]) {
+    const which = { references: "references", "cited-by": "cited_by", highlights: "highlights" };
+    const leaf = parts[2] ? which[parts[2] as keyof typeof which] : "paper";
+    return leaf ? { file: "papers", keys: [parts[1], leaf] } : null;
+  }
+  if (parts[0] === "authors" && parts[1]) {
+    const allowed = ["links", "works", "profile", "facts"];
+    const leaf = parts[2] ? (allowed.includes(parts[2]) ? parts[2] : null) : "author";
+    return leaf ? { file: "authors", keys: [parts[1], leaf] } : null;
+  }
+
+  // Everything the first screen needs, in one file loaded up front.
+  const wide: Record<string, string> = {
+    timeline: "timeline",
+    shelves: "shelves",
+    authors: "authorList",
+    stats: "stats",
+    map: "map",
+    index: "index",
+  };
+  return wide[route] ? { file: "library", keys: [wide[route]] } : null;
+}
+
+async function staticRead<T>(path: string): Promise<T> {
+  const found = staticLookup(path);
+  if (!found) throw new ApiError("Not part of this copy of the library", 404);
+  let doc: unknown = await bundle(found.file);
+  for (const key of found.keys) {
+    doc = (doc as Record<string, unknown> | null)?.[key];
+    if (doc === undefined || doc === null) {
+      throw new ApiError("Not in this copy of the library", 404);
+    }
+  }
+  return doc as T;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -12,6 +106,18 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let resp: Response;
+  const method = (init?.method ?? "GET").toUpperCase();
+
+  if (STATIC_MODE) {
+    if (method !== "GET") {
+      throw new ApiError(
+        "This is a published copy of a library, so nothing here can be changed.",
+        405,
+      );
+    }
+    return staticRead<T>(path);
+  }
+
   try {
     resp = await fetch(`${BASE}${path}`, {
       ...init,
@@ -306,7 +412,6 @@ export interface Preview {
   source_names: string[];
   counts: {
     references: number;
-    citations: number;
     authors: number;
     would_link_now: number;
     would_link_outgoing: number;
@@ -316,7 +421,6 @@ export interface Preview {
   earlier_version_year: number | null;
   edge_notes?: Record<string, string>;
   refetchable?: string[];
-  sample_citations: EdgeRecord[];
   sample_references: EdgeRecord[];
   warnings: string[];
 }
@@ -327,7 +431,6 @@ export interface SaveResult {
   title: string;
   sources_used: string[];
   references_stored: number;
-  citations_stored: number;
   links_created: number;
   pdf_path: string | null;
   warnings: string[];
@@ -376,6 +479,32 @@ export interface ReferenceItem {
   citation_count: number | null;
   resolved_paper_id: number | null;
   in_library: boolean;
+}
+
+/** A library paper that cites the one being viewed. Read off the far side of
+ *  the reference rows, so it is always a paper you hold. */
+export interface CitedByItem {
+  id: number;
+  title: string | null;
+  year: number | null;
+  venue: string | null;
+  citation_count: number | null;
+  authors_blob: string | null;
+  in_library: true;
+}
+
+/** What deleting a paper took with it. */
+export interface RemovedPaper {
+  title: string | null;
+  references: number;
+  links: number;
+  highlights: number;
+  /** Reference rows in other papers that pointed here and are now unresolved. */
+  unresolved: number;
+  /** Authors removed because no other paper credited them. */
+  authors: string[];
+  institutions: number;
+  files: string[];
 }
 
 export interface HighlightRect {
@@ -601,10 +730,7 @@ export interface Settings {
   openalex_key_set?: boolean;
   semantic_scholar_key: string;
   semantic_scholar_key_set?: boolean;
-  fetch_citations: string;
   fetch_references: string;
-  citation_page_limit: string;
-  auto_download_pdf: string;
   institution_proxy: string;
   ai_openrouter_key: string;
   ai_openrouter_key_set?: boolean;
@@ -638,9 +764,9 @@ export interface StreamHandlers {
   onVersions?: (d: {
     versions: WorkVersion[]; current_year: number | null; error?: string | null;
   }) => void;
-  onEdgesPending?: (which: "references" | "citations") => void;
+  onEdgesPending?: (which: "references") => void;
   onEdges?: (d: {
-    which: "references" | "citations";
+    which: "references";
     count: number;
     note: string;
     sample: EdgeRecord[];
@@ -677,7 +803,7 @@ export function previewStream(
   on("merged", (d) => h.onMerged?.(d as { merged: PaperRecord }));
   on("versions", (d) => h.onVersions?.(d as never));
   on("edges_pending", (d) =>
-    h.onEdgesPending?.((d as { which: "references" | "citations" }).which),
+    h.onEdgesPending?.((d as { which: "references" }).which),
   );
   on("edges", (d) => h.onEdges?.(d as Parameters<NonNullable<StreamHandlers["onEdges"]>>[0]));
   on("done", (d) => {
@@ -696,6 +822,121 @@ export function previewStream(
     if (!finished) {
       finished = true;
       h.onError?.("Lost the connection to the backend during the lookup.");
+      es.close();
+    }
+  };
+
+  return () => {
+    finished = true;
+    es.close();
+  };
+}
+
+/** One route to a file, either known up front or discovered mid-search. */
+export interface PdfCandidate {
+  url: string;
+  origin: string;
+  kind: string;
+  label: string;
+  note: string | null;
+}
+
+/** A source being consulted, and how it went. */
+export interface PdfStage {
+  name: string;
+  label: string;
+  status: "running" | "ok" | "error" | "skipped";
+  detail: string;
+}
+
+export interface PdfSearchHandlers {
+  onStart?: (d: {
+    paper_id: number;
+    title: string;
+    has_pdf: boolean;
+    identifiers: Record<string, string | null>;
+  }) => void;
+  onStage?: (d: PdfStage) => void;
+  onCandidate?: (d: PdfCandidate) => void;
+  onTrying?: (d: { count: number }) => void;
+  onAttempt?: (d: {
+    index: number;
+    total: number;
+    url: string;
+    label: string;
+    note: string | null;
+    origin: string;
+  }) => void;
+  onAttemptResult?: (d: {
+    index: number;
+    ok: boolean;
+    detail: string;
+    followed?: number;
+    /** True when a bot check answered instead of the file. */
+    blocked?: boolean;
+    url?: string;
+  }) => void;
+  onDone?: (d: {
+    ok: boolean;
+    paper_id: number;
+    pdf_path?: string;
+    url?: string;
+    tried: number;
+    bytes?: number;
+    message: string;
+    /** Links that a bot check refused. They work in a browser. */
+    blocked?: PdfCandidate[];
+    /** Every link the search tried, in the order it tried them. */
+    attempted?: PdfCandidate[];
+  }) => void;
+  onError?: (message: string) => void;
+}
+
+/**
+ * Watch a PDF hunt for one paper. Returns a function that closes the stream.
+ *
+ * The search is deliberate — nothing looks for a file until this is called —
+ * so the caller is expected to be showing the steps to someone watching.
+ */
+export function pdfSearchStream(paperId: number, h: PdfSearchHandlers): () => void {
+  const es = new EventSource(`${BASE}/api/papers/${paperId}/pdf-search/stream`);
+  let finished = false;
+
+  const on = (name: string, fn: (data: unknown) => void) =>
+    es.addEventListener(name, (e) => {
+      try {
+        fn(JSON.parse((e as MessageEvent).data));
+      } catch {
+        /* a malformed frame is not worth tearing the stream down for */
+      }
+    });
+
+  on("start", (d) => h.onStart?.(d as Parameters<NonNullable<PdfSearchHandlers["onStart"]>>[0]));
+  on("stage", (d) => h.onStage?.(d as PdfStage));
+  on("candidate", (d) => h.onCandidate?.(d as PdfCandidate));
+  on("trying", (d) => h.onTrying?.(d as { count: number }));
+  on("attempt", (d) =>
+    h.onAttempt?.(d as Parameters<NonNullable<PdfSearchHandlers["onAttempt"]>>[0]),
+  );
+  on("attempt_result", (d) =>
+    h.onAttemptResult?.(d as Parameters<NonNullable<PdfSearchHandlers["onAttemptResult"]>>[0]),
+  );
+  on("done", (d) => {
+    finished = true;
+    h.onDone?.(d as Parameters<NonNullable<PdfSearchHandlers["onDone"]>>[0]);
+    es.close();
+  });
+  on("error", (d) => {
+    finished = true;
+    h.onError?.((d as { message: string }).message);
+    es.close();
+  });
+
+  // Fires on network failure too, so only report it if no terminal event came.
+  es.onerror = () => {
+    if (!finished) {
+      finished = true;
+      h.onError?.("Lost the connection to the backend during the search.");
       es.close();
     }
   };
@@ -738,7 +979,18 @@ export const api = {
   paper: (id: number) => request<Paper>(`/api/papers/${id}`),
   patchPaper: (id: number, body: Record<string, unknown>) =>
     request<Paper>(`/api/papers/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-  deletePaper: (id: number) => request<{ status: string }>(`/api/papers/${id}`, { method: "DELETE" }),
+  /** Removes the paper and anything that existed only for it: its references,
+   *  links, highlights, the stored PDF, and any author or institution no other
+   *  paper still uses. `removed` says what went. */
+  deletePaper: (id: number) =>
+    request<{ status: string; removed: RemovedPaper }>(`/api/papers/${id}`, { method: "DELETE" }),
+  /** Drops one row from a paper's reference list. The referenced paper itself,
+   *  if you hold it, is untouched. */
+  deleteReference: (paperId: number, referenceId: number) =>
+    request<{ status: string; title: string | null; links_removed: number }>(
+      `/api/papers/${paperId}/references/${referenceId}`,
+      { method: "DELETE" },
+    ),
 
   timeline: () => request<{ papers: TimelinePaper[]; links: LinkRow[] }>("/api/timeline"),
   authors: () => request<{ authors: AuthorRow[] }>("/api/authors"),
@@ -838,10 +1090,14 @@ export const api = {
     request<{ pages: { page: number; text: string }[]; page_count: number }>(
       `/api/papers/${paperId}/pdf-text?page=${page}`,
     ),
-  references: (paperId: number, direction: "reference" | "citation" = "reference") =>
-    request<{ direction: string; items: ReferenceItem[]; total: number; in_library: number }>(
-      `/api/papers/${paperId}/references?direction=${direction}`,
+  references: (paperId: number) =>
+    request<{ items: ReferenceItem[]; total: number; in_library: number }>(
+      `/api/papers/${paperId}/references`,
     ),
+  /** Papers in the library whose bibliography names this one. Library-only by
+   *  design: the full citing list is unbounded and is never fetched. */
+  citedBy: (paperId: number) =>
+    request<{ items: CitedByItem[]; total: number }>(`/api/papers/${paperId}/cited-by`),
   highlights: (paperId: number) =>
     request<{ highlights: Highlight[] }>(`/api/papers/${paperId}/highlights`),
   createHighlight: (paperId: number, body: Record<string, unknown>) =>

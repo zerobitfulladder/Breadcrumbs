@@ -1,3 +1,4 @@
+import { memo } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -84,7 +85,7 @@ function remarkDoiLinks() {
  * Models write Markdown whether or not you ask them to, so rendering it is not
  * a nicety — unrendered, every reply arrives full of asterisks and pipes.
  */
-export default function Markdown({ children, onPaperLink }: Props) {
+function Markdown({ children, onPaperLink }: Props) {
   return (
     <div className="md">
       <ReactMarkdown
@@ -164,3 +165,11 @@ export default function Markdown({ children, onPaperLink }: Props) {
     </div>
   );
 }
+
+/**
+ * Parsing Markdown — with GFM, maths and KaTeX — is the expensive part of a
+ * turn, and a conversation holds many. Typing in the composer re-renders the
+ * component that owns the log, so without this every keystroke re-parsed every
+ * message in the thread.
+ */
+export default memo(Markdown);

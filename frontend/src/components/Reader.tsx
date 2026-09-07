@@ -24,6 +24,8 @@ const COLORS = ["#fde047", "#86efac", "#93c5fd", "#f9a8d4", "#fdba74"];
  * about the passage in front of you should not mean going back to another
  * window to ask it.
  */
+const INVERT_KEY = "breadcrumbs.reader.invert";
+
 export default function Reader({ paperId }: Props) {
   const [paper, setPaper] = useState<Paper | null>(null);
   const [options, setOptions] = useState<PdfOptions | null>(null);
@@ -36,9 +38,40 @@ export default function Reader({ paperId }: Props) {
 
   const [selection, setSelection] = useState<PdfSelection | null>(null);
   const [noteDraft, setNoteDraft] = useState<string | null>(null);
+
+  /**
+   * Change what is selected, and start the menu fresh.
+   *
+   * The draft belongs to one selection. Left standing, it survived the passage
+   * it was written for: dismissing the menu cleared the selection but not the
+   * draft, so the next passage you selected opened straight into a note field
+   * for text it had nothing to do with.
+   */
+  const chooseSelection = useCallback((next: PdfSelection | null) => {
+    setSelection(next);
+    setNoteDraft(null);
+  }, []);
   const [activeHighlight, setActiveHighlight] = useState<number | null>(null);
-  const [dark, setDark] = useState(false);
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  /**
+   * Inverting the page is a reading preference, not a per-paper one — it
+   * depends on the room you are in. Every reader tab shares one setting,
+   * because localStorage is per origin and each paper opens in its own tab.
+   */
+  const [dark, setDark] = useState(() => {
+    try {
+      return localStorage.getItem(INVERT_KEY) === "1";
+    } catch {
+      return false;   // a blocked store just means the default
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(INVERT_KEY, dark ? "1" : "0");
+    } catch {
+      /* not remembering it is not worth surfacing */
+    }
+  }, [dark]);
   const [sideTab, setSideTab] = useState<"notes" | "chat">("notes");
   const [reveal, setReveal] = useState<{
     page: number;
@@ -103,7 +136,7 @@ export default function Reader({ paperId }: Props) {
       const now = Date.now();
       if (now - lastShift < DOUBLE_TAP_MS) {
         lastShift = 0;
-        setAssistantOpen((v) => !v);
+        setSideTab((t) => (t === "chat" ? "notes" : "chat"));
       } else {
         lastShift = now;
       }
@@ -193,7 +226,7 @@ export default function Reader({ paperId }: Props) {
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e));
     } finally {
-      setSelection(null);
+      chooseSelection(null);
       setNoteDraft(null);
       window.getSelection()?.removeAllRanges();
     }
@@ -203,10 +236,9 @@ export default function Reader({ paperId }: Props) {
   function addSelectionToContext() {
     if (!selection) return;
     setAttachment({ page: selection.page, text: selection.text });
-    // Goes to whichever chat is already showing; opens the floating one only
-    // when the docked tab is not in front.
-    if (sideTab !== "chat") setAssistantOpen(true);
-    setSelection(null);
+    // Bring the conversation forward, so the passage lands somewhere visible.
+    setSideTab("chat");
+    chooseSelection(null);
     window.getSelection()?.removeAllRanges();
   }
 
@@ -273,7 +305,7 @@ export default function Reader({ paperId }: Props) {
               file={api.pdfUrl(paperId)}
               highlights={highlights}
               activeHighlightId={activeHighlight}
-              onSelect={setSelection}
+              onSelect={chooseSelection}
               onHighlightClick={setActiveHighlight}
               onVisiblePage={setVisiblePage}
               reveal={reveal}
@@ -324,10 +356,7 @@ export default function Reader({ paperId }: Props) {
             </button>
             <button
               className={sideTab === "chat" ? "is-active" : ""}
-              onClick={() => {
-                setSideTab("chat");
-                setAssistantOpen(false);   // docked and floating are exclusive
-              }}
+              onClick={() => setSideTab("chat")}
             >
               Bread
             </button>
@@ -404,7 +433,14 @@ export default function Reader({ paperId }: Props) {
                       ×
                     </button>
                   </div>
-                  {h.quoted && <blockquote>{h.quoted}</blockquote>}
+                  {h.quoted ? (
+                    <blockquote>{h.quoted}</blockquote>
+                  ) : (
+                    // A box drawn on a scanned page. There is no text to quote,
+                    // so say what it is rather than leaving the entry looking
+                    // like a highlight that failed to capture anything.
+                    <p className="rd-hl-region">Marked area — no text on this page</p>
+                  )}
                   <AutoTextarea
                     className="rd-hl-note"
                     defaultValue={h.comment ?? ""}
@@ -460,10 +496,14 @@ export default function Reader({ paperId }: Props) {
                 ))}
               </div>
               <button onClick={() => setNoteDraft("")}>Note</button>
-              <button onClick={addSelectionToContext}>Add to context</button>
+              {/* A drawn box carries no text, so there is nothing to hand the
+                  assistant. Offering it would attach an empty passage. */}
+              {selection.kind !== "region" && (
+                <button onClick={addSelectionToContext}>Add to context</button>
+              )}
               <button
                 onClick={() => {
-                  setSelection(null);
+                  chooseSelection(null);
                   window.getSelection()?.removeAllRanges();
                 }}
               >
@@ -498,23 +538,6 @@ export default function Reader({ paperId }: Props) {
         </div>
       )}
 
-      {sideTab !== "chat" && (
-        <Assistant
-          open={assistantOpen}
-          onOpenChange={setAssistantOpen}
-          context={chatContext}
-          attachment={attachment}
-          onClearAttachment={() => setAttachment(null)}
-          onReveal={onReveal}
-          onChanged={() => setVersion((v) => v + 1)}
-        />
-      )}
-
-      {sideTab !== "chat" && !assistantOpen && (
-        <button className="rd-ask" onClick={() => setAssistantOpen(true)}>
-          <kbd>⇧⇧</kbd> Bread
-        </button>
-      )}
     </div>
   );
 }

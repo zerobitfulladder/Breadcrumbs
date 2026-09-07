@@ -89,3 +89,52 @@
 @media (prefers-reduced-motion: reduce) {
   .pv-reveal { animation: none; opacity: 0.7; }
 }
+
+/* Box selection, for pages that carry no text.
+   A scanned PDF is an image: there is nothing to select, so a note cannot be
+   anchored without drawing the anchor by hand. The stored geometry is the same
+   as a text highlight's, so the mark that results is indistinguishable. */
+.pv-region {
+  border: 1px solid var(--border); background: none; color: var(--text-dim);
+  border-radius: 5px; padding: 2px 8px; font-size: 12px; cursor: pointer;
+}
+.pv-region.is-on {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+/* Crosshair over the whole page, and the text layer stops intercepting drags
+   so a box can be drawn straight across words on a mixed page. */
+.pv-page.is-drawing { cursor: crosshair; }
+.pv-page.is-drawing .react-pdf__Page__textContent { pointer-events: none; user-select: none; }
+
+/* The box while it is being dragged. Outlined rather than filled: at this
+   point it is a gesture, not yet a mark on the page. */
+.pv-drawing {
+  position: absolute; pointer-events: none;
+  border: 1.5px dashed var(--accent);
+  background: rgb(125 125 125 / 0.12);
+  border-radius: 2px;
+}
+
+/* A highlight's note, shown while the pointer rests on it.
+   Fixed positioning on purpose: the pages sit inside a CSS `zoom` wrapper and
+   a scroll container, and a bubble parented there would be scaled with the
+   page and clipped at its edges. */
+.pv-note {
+  position: fixed;
+  z-index: 40;
+  max-width: 320px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.45;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.28);
+  pointer-events: none;          /* never stands between you and the mark */
+  white-space: pre-wrap;         /* a note written over several lines keeps them */
+  overflow-wrap: anywhere;
+  animation: pv-note-in 0.09s ease-out;
+}
+@keyframes pv-note-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pv-note { animation: none; } }

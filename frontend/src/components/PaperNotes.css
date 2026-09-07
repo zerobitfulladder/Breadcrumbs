@@ -62,3 +62,14 @@
 .pn-hl-note.is-empty { color: var(--text-dim); font-style: italic; }
 
 .pn-empty { margin: 0; font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+
+/* A note is rendered as Markdown when it is being read, and shown as source
+   while it is being edited. `white-space: pre-wrap` above is for the source —
+   inside rendered output it would preserve the line breaks Markdown has
+   already turned into paragraphs, double-spacing every note. */
+.pn-note .md, .pn-hl-note .md { white-space: normal; }
+.pn-note .md { font-size: 12px; line-height: 1.55; }
+.pn-hl-note .md { font-size: 11px; line-height: 1.45; }
+/* KaTeX sets its own font-size in em; without this it inherits the small note
+   size twice over and comes out smaller than the prose around it. */
+.pn-note .md .katex, .pn-hl-note .md .katex { font-size: 1.02em; }

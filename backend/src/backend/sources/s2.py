@@ -113,15 +113,27 @@ async def fetch_paper(
     return parse_paper(data) if data else None
 
 
-async def _fetch_edges(
-    client: httpx.AsyncClient, ident: str, kind: str, side: str, api_key: str, limit: int
+#: Pagination stops here no matter what the server says. Not a product limit —
+#: no bibliography approaches it — but a guard against a paging bug turning
+#: into an unbounded loop.
+_RUNAWAY_GUARD = 10_000
+
+
+async def fetch_references(
+    client: httpx.AsyncClient, ident: str, api_key: str = ""
 ) -> list[dict[str, Any]]:
+    """Every paper `ident` cites, carrying context and intent.
+
+    The whole bibliography, followed to the last page. A reference list is
+    finite and printed in the paper itself, so there is nothing a cap would
+    save us from.
+    """
     out: list[dict[str, Any]] = []
     offset = 0
-    while len(out) < limit:
-        page = min(1000 if api_key else 100, limit - len(out))
+    page = 1000 if api_key else 100
+    while len(out) < _RUNAWAY_GUARD:
         data = await get_json(
-            client, f"{BASE}/paper/{ident}/{kind}",
+            client, f"{BASE}/paper/{ident}/references",
             source="semantic_scholar",
             params={"fields": EDGE_FIELDS, "limit": page, "offset": offset},
             headers=_headers(api_key),
@@ -130,27 +142,13 @@ async def _fetch_edges(
         if not rows:
             break
         for entry in rows:
-            rec = _parse_edge(entry, side)
+            rec = _parse_edge(entry, "citedPaper")
             if rec:
                 out.append(rec)
         if "next" not in (data or {}):
             break
         offset = data["next"]
     return out
-
-
-async def fetch_citations(
-    client: httpx.AsyncClient, ident: str, api_key: str = "", limit: int = 500
-) -> list[dict[str, Any]]:
-    """Papers that cite `ident`, carrying context and intent."""
-    return await _fetch_edges(client, ident, "citations", "citingPaper", api_key, limit)
-
-
-async def fetch_references(
-    client: httpx.AsyncClient, ident: str, api_key: str = "", limit: int = 500
-) -> list[dict[str, Any]]:
-    """Papers that `ident` cites, carrying context and intent."""
-    return await _fetch_edges(client, ident, "references", "citedPaper", api_key, limit)
 
 
 async def autocomplete(

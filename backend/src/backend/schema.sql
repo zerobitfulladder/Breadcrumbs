@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS papers (
 
     -- your own study metadata
     status       TEXT    NOT NULL DEFAULT 'unread'
-                 CHECK (status IN ('unread','queued','skimmed','read','archived')),
+                 CHECK (status IN ('unread','queued','reading','skimmed','read','archived')),
     rating       INTEGER CHECK (rating BETWEEN 0 AND 5),
     importance   INTEGER CHECK (importance BETWEEN 0 AND 5), -- your own weighting
 
@@ -119,6 +119,26 @@ CREATE TABLE IF NOT EXISTS authors (
 );
 
 CREATE INDEX IF NOT EXISTS idx_authors_norm ON authors(normalized_name);
+
+-- Every external id an author has ever answered to, including ids inherited
+-- from a duplicate that was merged away.
+--
+-- The id columns on `authors` are single-valued and UNIQUE, which is fine for
+-- one record but wrong for a person: OpenAlex routinely splits a prolific
+-- author across several entities. Geoffrey Hinton has two, holding 36 and 378
+-- works, and neither carries an ORCID to tie them together. Without this table
+-- a merge would have to discard one of those ids, and the next paper arriving
+-- under it would recreate the duplicate.
+--
+-- Keyed on (kind, value) so one id can never point at two authors.
+CREATE TABLE IF NOT EXISTS author_ids (
+    author_id  INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL CHECK (kind IN ('orcid','openalex_id','s2_author_id')),
+    value      TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (kind, value)
+);
+CREATE INDEX IF NOT EXISTS idx_author_ids_author ON author_ids(author_id);
 
 -- an author's affiliation changes over time; keep the history for context
 CREATE TABLE IF NOT EXISTS author_affiliations (
@@ -222,15 +242,21 @@ CREATE INDEX IF NOT EXISTS idx_links_src  ON links(src_paper_id);
 CREATE INDEX IF NOT EXISTS idx_links_dst  ON links(dst_paper_id);
 CREATE INDEX IF NOT EXISTS idx_links_type ON links(type);
 
--- Identifiers of papers referenced by / citing a library paper, where the other
--- side may not be in the library yet. Nothing here creates a paper row: adding
--- papers is always a deliberate manual act. This table exists so that when you
--- later add paper Y, every already-stored mention of Y resolves into a real
--- link without re-fetching anything.
+-- Identifiers of the papers a library paper cites, where the cited side may not
+-- be in the library yet. Nothing here creates a paper row: adding papers is
+-- always a deliberate manual act. This table exists so that when you later add
+-- paper Y, every already-stored mention of Y resolves into a real link without
+-- re-fetching anything.
+--
+-- Only one direction is stored: what a paper cites. A bibliography is finite
+-- and printed in the paper itself, so it can be fetched completely. "Who cites
+-- this" is unbounded — tens of thousands for a well-known paper — and any cap
+-- on it yields an arbitrary slice, so it is not fetched at all. Nothing is lost
+-- for papers you hold: if you have both sides, the citing paper's own reference
+-- list supplies the edge, and resolve_links checks both sides on every add.
 CREATE TABLE IF NOT EXISTS pending_links (
     id            INTEGER PRIMARY KEY,
     from_paper_id INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
-    direction     TEXT NOT NULL CHECK (direction IN ('reference','citation')),
 
     -- identifiers of the other paper; at least one is non-null
     doi           TEXT,
@@ -259,9 +285,9 @@ CREATE INDEX IF NOT EXISTS idx_pend_arxiv    ON pending_links(arxiv_id)    WHERE
 CREATE INDEX IF NOT EXISTS idx_pend_resolved ON pending_links(resolved_paper_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pend_doi
-    ON pending_links(from_paper_id, direction, doi)   WHERE doi IS NOT NULL;
+    ON pending_links(from_paper_id, doi)   WHERE doi IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pend_s2
-    ON pending_links(from_paper_id, direction, s2_id) WHERE s2_id IS NOT NULL AND doi IS NULL;
+    ON pending_links(from_paper_id, s2_id) WHERE s2_id IS NOT NULL AND doi IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- cached author biographies
@@ -341,10 +367,7 @@ CREATE TABLE IF NOT EXISTS settings (
 INSERT OR IGNORE INTO settings (key, value) VALUES
     ('contact_email',        ''),   -- used for API polite pools; required
     ('semantic_scholar_key', ''),   -- optional, lifts the 1 req/s shared limit
-    ('fetch_citations',      '1'),  -- pull "who cites this" on add
     ('fetch_references',     '1'),  -- pull "what this cites" on add
-    ('citation_page_limit',  '500'),-- max citing papers stored per paper
-    ('auto_download_pdf',    '1'),  -- fetch open-access PDF when available
     ('library_path',         ''),
     -- Your institution's EZproxy/OpenAthens prefix, e.g.
     -- 'https://login.ezproxy.your-uni.edu/login?url='. Used to build a link

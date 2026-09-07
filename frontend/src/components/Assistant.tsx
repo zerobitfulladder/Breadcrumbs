@@ -95,6 +95,14 @@ export default function Assistant({
   const [loadingThread, setLoadingThread] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
+  /**
+   * Stable, so the memoised Markdown actually memoises. An inline arrow is a
+   * new prop identity on every render, which would defeat it entirely.
+   */
+  const openProposal = useCallback(
+    (identifier: string) => setProposal({ identifier }),
+    [],
+  );
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<ToolActivity[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -589,7 +597,7 @@ export default function Assistant({
               {t.interrupted ? (
                 <div className="as-interrupted">Stopped</div>
               ) : t.role === "assistant" ? (
-                <Markdown onPaperLink={(identifier) => setProposal({ identifier })}>
+                <Markdown onPaperLink={openProposal}>
                   {t.text}
                 </Markdown>
               ) : (

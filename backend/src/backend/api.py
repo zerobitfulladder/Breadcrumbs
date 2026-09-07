@@ -8,13 +8,13 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import db, ingest, pdftext, photos, store
+from . import db, ingest, pdffind, pdftext, photos, store
 from .sources.http import SourceError, make_client
 
 logging.basicConfig(level=logging.INFO)
@@ -72,10 +72,7 @@ class SettingsRequest(BaseModel):
     contact_email: str | None = None
     openalex_key: str | None = None
     semantic_scholar_key: str | None = None
-    fetch_citations: bool | None = None
     fetch_references: bool | None = None
-    citation_page_limit: int | None = None
-    auto_download_pdf: bool | None = None
     institution_proxy: str | None = None
     ai_openrouter_key: str | None = None
     ai_gemini_key: str | None = None
@@ -123,7 +120,7 @@ def write_settings(
     for key, value in body.model_dump(exclude_unset=True).items():
         if value is None:
             continue
-        if key in ("fetch_citations", "fetch_references", "auto_download_pdf"):
+        if key == "fetch_references":
             values[key] = "1" if value else "0"
         elif key in db.SECRET_KEYS and value == "":
             continue  # blank means "leave the stored key alone"
@@ -563,7 +560,6 @@ async def refetch(
 @app.post("/api/papers")
 async def save_paper(
     body: SaveRequest,
-    background: BackgroundTasks,
     conn: sqlite3.Connection = Depends(db.get_conn),
 ) -> dict[str, Any]:
     """Commit a previewed bundle, or fetch and commit when given an identifier."""
@@ -580,9 +576,6 @@ async def save_paper(
             raise HTTPException(404, str(exc)) from exc
 
     result = await ingest.save_bundle(conn, bundle)
-    if result.pdf_pending and result.paper_id:
-        # After the response, so a stale open-access link cannot hold up the add.
-        background.add_task(ingest.download_pdf_later, result.paper_id, result.pdf_pending)
     for shelf_id in body.shelf_ids:
         conn.execute(
             "INSERT OR IGNORE INTO paper_shelves(paper_id, shelf_id) VALUES(?,?)",
@@ -693,7 +686,7 @@ def get_paper(paper_id: int, conn: sqlite3.Connection = Depends(db.get_conn)) ->
     paper["note"] = note["body"] if note else ""
     paper["unresolved_references"] = conn.execute(
         "SELECT COUNT(*) c FROM pending_links WHERE from_paper_id = ? "
-        "AND direction = 'reference' AND resolved_paper_id IS NULL",
+        "AND resolved_paper_id IS NULL",
         (paper_id,),
     ).fetchone()["c"]
     return paper
@@ -724,11 +717,52 @@ def patch_paper(
 
 
 @app.delete("/api/papers/{paper_id}")
-def delete_paper(paper_id: int, conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, str]:
-    if conn.execute("SELECT 1 FROM papers WHERE id = ?", (paper_id,)).fetchone() is None:
-        raise HTTPException(404, "No such paper")
-    conn.execute("DELETE FROM papers WHERE id = ?", (paper_id,))
-    return {"status": "deleted"}
+def delete_paper(paper_id: int, conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, Any]:
+    """Remove a paper and everything that existed only because of it.
+
+    Authors and institutions reached only through this paper go too; ones
+    shared with a paper you keep are left alone. Reference rows in other papers
+    that pointed at this one go back to unresolved. See store.delete_paper.
+    """
+    try:
+        removed = store.delete_paper(conn, paper_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return {"status": "deleted", "removed": removed}
+
+
+@app.delete("/api/papers/{paper_id}/references/{reference_id}")
+def delete_reference(
+    paper_id: int, reference_id: int, conn: sqlite3.Connection = Depends(db.get_conn)
+) -> dict[str, Any]:
+    """Drop one row from a paper's reference list.
+
+    Sources disagree, and sometimes one is simply wrong: OpenAlex fuses two
+    works occasionally, and the result is a bibliography carrying references
+    the paper never made. Nothing can arbitrate that automatically — you have
+    read the paper — so removing a row by hand is the remedy.
+
+    Only the reference row goes. If it resolved to a paper you hold, that paper
+    and the link between them are untouched: this says "not cited here", not
+    "delete that work".
+    """
+    row = conn.execute(
+        "SELECT id, title, resolved_paper_id FROM pending_links WHERE id = ? AND from_paper_id = ?",
+        (reference_id, paper_id),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(404, "No such reference on this paper")
+
+    conn.execute("DELETE FROM pending_links WHERE id = ?", (reference_id,))
+    # The auto link this row created is a claim about the same citation, so it
+    # goes with it. One you asserted by hand is your own and stays.
+    unlinked = 0
+    if row["resolved_paper_id"]:
+        unlinked = conn.execute(
+            "DELETE FROM links WHERE src_paper_id = ? AND dst_paper_id = ? AND origin = 'auto'",
+            (paper_id, row["resolved_paper_id"]),
+        ).rowcount
+    return {"status": "deleted", "title": row["title"], "links_removed": unlinked}
 
 
 @app.get("/api/papers/{paper_id}/pdf-options")
@@ -804,6 +838,31 @@ async def upload_pdf(
     (db.library_root() / rel).write_bytes(body)
     conn.execute("UPDATE papers SET pdf_path = ? WHERE id = ?", (rel, paper_id))
     return {"paper_id": paper_id, "pdf_path": rel, "bytes": len(body)}
+
+
+@app.get("/api/papers/{paper_id}/pdf-search/stream")
+async def pdf_search_stream(paper_id: int) -> StreamingResponse:
+    """Hunt for this paper's PDF, reporting each step as it happens.
+
+    A GET with a side effect, because EventSource cannot issue anything else
+    and the search stores the file the moment it finds one. Same trade the
+    preview stream makes.
+    """
+
+    async def events() -> Any:
+        try:
+            async for name, data in pdffind.search(paper_id):
+                yield f"event: {name}\ndata: {json.dumps(data, default=str)}\n\n"
+        except Exception as exc:   # a stream must always terminate cleanly
+            logging.exception("pdf search failed")
+            payload = json.dumps({"message": f"{type(exc).__name__}: {exc}"})
+            yield f"event: error\ndata: {payload}\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/api/papers/{paper_id}/pdf")
@@ -1265,19 +1324,19 @@ class HighlightPatch(BaseModel):
 
 @app.get("/api/papers/{paper_id}/references")
 def paper_references(
-    paper_id: int,
-    direction: str = "reference",
-    conn: sqlite3.Connection = Depends(db.get_conn),
+    paper_id: int, conn: sqlite3.Connection = Depends(db.get_conn)
 ) -> dict[str, Any]:
-    """What this paper cites, or what cites it.
+    """What this paper cites.
 
     Every reference is stored at import as an identifier plus a title, whether
     or not the other side is in the library. So the list is complete, and each
     entry says whether you hold that paper — which is what makes it useful for
     deciding what to add next.
+
+    For the other direction — papers here that cite *this* one — see
+    `cited_by`, which reads the same rows from the far side. That view covers
+    your library only, which is the whole of what the graph draws.
     """
-    if direction not in ("reference", "citation"):
-        raise HTTPException(400, "direction must be 'reference' or 'citation'")
     if conn.execute("SELECT 1 FROM papers WHERE id = ?", (paper_id,)).fetchone() is None:
         raise HTTPException(404, "No such paper")
 
@@ -1287,9 +1346,9 @@ def paper_references(
         "  p.title AS held_title "
         "FROM pending_links pl "
         "LEFT JOIN papers p ON p.id = pl.resolved_paper_id "
-        "WHERE pl.from_paper_id = ? AND pl.direction = ? "
+        "WHERE pl.from_paper_id = ? "
         "ORDER BY pl.citation_count DESC NULLS LAST, pl.year DESC NULLS LAST",
-        (paper_id, direction),
+        (paper_id,),
     ).fetchall()
 
     items = []
@@ -1298,11 +1357,41 @@ def paper_references(
         d["in_library"] = d["resolved_paper_id"] is not None
         items.append(d)
     return {
-        "direction": direction,
         "items": items,
         "total": len(items),
         "in_library": sum(1 for i in items if i["in_library"]),
     }
+
+
+@app.get("/api/papers/{paper_id}/cited-by")
+def paper_cited_by(
+    paper_id: int, conn: sqlite3.Connection = Depends(db.get_conn)
+) -> dict[str, Any]:
+    """Papers in your library whose bibliography names this one.
+
+    Read straight off the reference rows other papers already stored, so it
+    needs no fetching of its own and stays correct as the library grows. It is
+    deliberately limited to what you hold: the full list of citing work runs to
+    tens of thousands for a well-known paper, and a truncated version of it
+    would be an arbitrary sample rather than an answer.
+    """
+    if conn.execute("SELECT 1 FROM papers WHERE id = ?", (paper_id,)).fetchone() is None:
+        raise HTTPException(404, "No such paper")
+
+    rows = conn.execute(
+        "SELECT p.id, p.title, p.year, p.venue, p.citation_count, "
+        "  (SELECT group_concat(a.name, ', ') FROM paper_authors pa "
+        "   JOIN authors a ON a.id = pa.author_id WHERE pa.paper_id = p.id "
+        "   ORDER BY pa.position) AS authors_blob "
+        "FROM pending_links pl "
+        "JOIN papers p ON p.id = pl.from_paper_id "
+        "WHERE pl.resolved_paper_id = ? AND pl.from_paper_id != ? "
+        "ORDER BY p.year DESC NULLS LAST, p.title",
+        (paper_id, paper_id),
+    ).fetchall()
+
+    items = [dict(r) | {"in_library": True} for r in rows]
+    return {"items": items, "total": len(items)}
 
 
 @app.get("/api/papers/{paper_id}/outline")
@@ -1347,7 +1436,11 @@ def create_highlight(
         (
             paper_id, body.page,
             json.dumps([r.model_dump() for r in body.rects]),
-            body.quoted, body.comment, body.color or "#fde047",
+            # A selection dragged across a line break carries the typesetter's
+            # hyphen with it — "clus- tering". The rectangles are unaffected;
+            # only the text stored alongside them needs mending.
+            pdftext.join_broken_words(body.quoted or "") or None,
+            body.comment, body.color or "#fde047",
             body.page_width, body.page_height,
         ),
     )
@@ -1572,6 +1665,37 @@ def _frontend_dist() -> Path:
     if override:
         return Path(override).expanduser()
     return Path(__file__).resolve().parents[3] / "frontend" / "dist"
+
+
+def _pages_site() -> Path:
+    """Where `make pages` puts the published copy."""
+    override = os.environ.get("BREADCRUMBS_PAGES")
+    if override:
+        return Path(override).expanduser()
+    return Path(__file__).resolve().parents[3] / "site"
+
+
+_PAGES = _pages_site()
+if (_PAGES / "index.html").is_file():
+    # The read-only build, served alongside the real app so it can be checked
+    # before it is published. It reads its own frozen JSON and talks to no API,
+    # so what appears here is exactly what a visitor to the published site
+    # would get — including everything deliberately missing from it.
+    #
+    # Mounted before "/" for the same reason the API routes are: a mount at the
+    # root matches everything after it.
+    @app.get("/readonly", include_in_schema=False)
+    def _readonly_slash() -> RedirectResponse:
+        """Send /readonly to /readonly/.
+
+        The published bundle is built with a relative base so it can sit at any
+        path. Relative asset URLs resolve against the directory of the current
+        URL, so without the trailing slash "./assets/x.js" resolves to
+        "/assets/x.js" — the development bundle, or nothing at all.
+        """
+        return RedirectResponse("/readonly/", status_code=308)
+
+    app.mount("/readonly", StaticFiles(directory=_PAGES, html=True), name="readonly")
 
 
 _DIST = _frontend_dist()

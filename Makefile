@@ -10,6 +10,7 @@
 # but not to serve it.
 
 HOST ?= 127.0.0.1
+PAGES ?= site
 PORT ?= 8000
 
 BACKEND  := backend
@@ -25,7 +26,7 @@ UV  := uv run --project $(BACKEND)
 NPM := cd $(FRONTEND) &&
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev dev-backend dev-frontend build run serve check clean wipe-build
+.PHONY: help install dev dev-backend dev-frontend build run serve check backfill pages clean wipe-build
 
 help: ## Show this help
 	@echo "Breadcrumbs"
@@ -44,6 +45,9 @@ install: ## Install backend and frontend dependencies
 dev: ## Backend and Vite together, with reload (ctrl-c stops both)
 	@echo "backend  http://$(HOST):$(PORT)"
 	@echo "frontend http://localhost:5173   <- open this one"
+	@test -f $(PAGES)/index.html \
+	  && echo "readonly http://localhost:5173/readonly/   (published copy; make pages to refresh)" \
+	  || echo "readonly not built yet — run 'make pages'"
 	@trap 'kill 0' INT TERM EXIT; \
 	  $(MAKE) --no-print-directory dev-backend & \
 	  $(MAKE) --no-print-directory dev-frontend & \
@@ -72,8 +76,40 @@ serve: ## Serve the existing build from the backend alone (no rebuild)
 	@echo "Breadcrumbs on http://$(HOST):$(PORT)"
 	$(UV) uvicorn backend.api:app --host $(HOST) --port $(PORT)
 
+# `tsc --noEmit` on the root tsconfig checks nothing: it is a references-only
+# file with "files": [], so tsc has no inputs and exits 0 regardless. `-b`
+# builds the referenced projects, which is what actually typechecks src.
+# --- publishing: a read-only copy, no backend ------------------------------
+# Freezes the library into static JSON and builds the reader against it, so the
+# result is a plain directory of files that any static host will serve.
+#
+# What it leaves out is as important as what it includes. No PDFs: a paywalled
+# article is the publisher's to distribute, not yours. No settings and no
+# conversations: that table holds your API keys. Only the routes listed in
+# export_static.ROUTES are written, so nothing is published by accident.
+#
+# VITE_STATIC=1 switches the client onto those files and refuses every write,
+# and the base is relative so the result works from a project page
+# (user.github.io/repo) as happily as from a domain root.
+pages: ## Build a read-only copy of the library for static hosting
+	rm -rf $(PAGES)
+	$(UV) python -m backend.export_static --out $(PAGES)/data
+	$(NPM) VITE_API_BASE= VITE_STATIC=1 VITE_STATIC_BASE=./data \
+	  npx vite build --base ./ --outDir ../$(PAGES) --emptyOutDir false
+	@touch $(PAGES)/.nojekyll
+	@# Put back the marker this target's own rm -rf removed. The directory is
+	@# tracked but its contents are not, and the backend's /readonly mount
+	@# checks for it at start-up.
+	@touch $(PAGES)/.gitkeep
+	@echo
+	@echo "  $(PAGES)/ is ready to publish — $$(du -sh $(PAGES) | cut -f1)"
+	@echo "  Preview it with:  python3 -m http.server -d $(PAGES) 8080"
+
+backfill: ## Re-fetch every paper's full reference list, then relink
+	$(UV) python -m backend.backfill
+
 check: ## Typecheck the frontend and import the backend
-	$(NPM) npx tsc --noEmit
+	$(NPM) npx tsc -b --force
 	$(UV) python -c "from backend.api import app; print('backend imports clean')"
 
 clean: ## Remove the bundle and Python caches

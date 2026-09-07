@@ -67,8 +67,8 @@ export default function AddPaper({ shelves, onSaved }: Props) {
         <div className="add-ok">
           <strong>Saved:</strong> {saved.title}
           <div className="add-ok-meta">
-            {saved.references_stored} references and {saved.citations_stored} citations recorded ·{" "}
-            {saved.links_created} link{saved.links_created === 1 ? "" : "s"} created
+            {saved.references_stored} reference{saved.references_stored === 1 ? "" : "s"} recorded
+            · {saved.links_created} link{saved.links_created === 1 ? "" : "s"} created
             {saved.pdf_path ? " · PDF downloaded" : ""}
           </div>
         </div>
@@ -109,7 +109,6 @@ export default function AddPaper({ shelves, onSaved }: Props) {
             versions={s.versions}
             versionsError={s.versionsError}
             refs={s.refs}
-            cites={s.cites}
             preview={s.preview}
             streaming={s.streaming}
             disabled={saving}

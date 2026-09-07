@@ -44,10 +44,7 @@ export default function Settings() {
       const body: Record<string, unknown> = {
         contact_email: data.contact_email,
         institution_proxy: data.institution_proxy,
-        citation_page_limit: Number(data.citation_page_limit) || 500,
-        fetch_citations: data.fetch_citations === "1",
         fetch_references: data.fetch_references === "1",
-        auto_download_pdf: data.auto_download_pdf === "1",
         search_provider: data.search_provider,
         assistant_provider: data.assistant_provider,
         assistant_model: data.assistant_model,
@@ -247,9 +244,9 @@ export default function Settings() {
           />
           <small>
             Rarely needed. Semantic Scholar now only powers the search suggestions and supplies
-            one citation metric; OpenAlex provides the record, the references and the citing
-            papers. Without a key this source gets a short retry budget and is skipped when it
-            throttles, which costs you nothing structural. Leave blank to keep any stored key.
+            one citation metric; OpenAlex provides the record and the references. Without a key
+            this source gets a short retry budget and is skipped when it throttles, which costs
+            you nothing structural. Leave blank to keep any stored key.
           </small>
         </label>
 
@@ -311,36 +308,14 @@ export default function Settings() {
           />
           <span>Fetch the reference list when adding a paper</span>
         </label>
-        <label className="row">
-          <input
-            type="checkbox"
-            checked={data.fetch_citations === "1"}
-            onChange={(e) => field("fetch_citations", e.target.checked ? "1" : "0")}
-          />
-          <span>Fetch citing papers when adding a paper</span>
-        </label>
-        <label className="row">
-          <input
-            type="checkbox"
-            checked={data.auto_download_pdf === "1"}
-            onChange={(e) => field("auto_download_pdf", e.target.checked ? "1" : "0")}
-          />
-          <span>Download the PDF when an open-access copy exists</span>
-        </label>
-        <label>
-          <span>Maximum references or citations stored per paper</span>
-          <input
-            type="number"
-            min={10}
-            max={5000}
-            value={data.citation_page_limit}
-            onChange={(e) => field("citation_page_limit", e.target.value)}
-          />
-          <small>
-            Only identifiers are stored, never whole papers. A higher number means slower adds
-            for heavily cited work.
-          </small>
-        </label>
+        <p className="set-note">
+          The whole bibliography is stored, as identifiers and titles only — never whole
+          papers. There is no cap: a reference list is finite and printed in the paper itself.
+          Papers citing <em>this</em> one are not fetched; that list runs to tens of thousands
+          for well-known work, so any cap on it would store an arbitrary slice. Nothing is lost
+          within your library — when you hold both sides, the citing paper's own bibliography
+          supplies the link, and it is drawn from both directions.
+        </p>
       </section>
 
       <div className="set-actions">

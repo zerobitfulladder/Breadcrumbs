@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, ApiError } from "../api";
+import { api, ApiError, STATIC_MODE } from "../api";
 import type { AuthorDetail, AuthorLink, AuthorProfile, AuthorStats, AuthorWork } from "../api";
 import PaperPreviewCard from "./PaperPreviewCard";
 import "./AuthorPanel.css";
@@ -273,6 +273,7 @@ export default function AuthorPanel({
         )}
         <button
           className="ap-photo-edit-btn"
+          hidden={STATIC_MODE}
           onClick={() => setShowPhotoInput((v) => !v)}
           title="Change the portrait"
         >

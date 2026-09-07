@@ -192,7 +192,7 @@ def get_paper_links(conn: sqlite3.Connection, paper_id: int) -> dict[str, Any]:
     out = _cap([dict(r) for r in rows])
     out["unresolved"] = pending
     out["explanation"] = (
-        f"{pending} referenced or citing papers are recorded by identifier but are not in "
+        f"{pending} referenced papers are recorded by identifier but are not in "
         "the library, so they have no link yet."
     )
     return out
@@ -416,7 +416,6 @@ async def lookup_identifier(
         "citation_count": m.get("citation_count"),
         "in_library": store.find_paper_id(conn, m) is not None,
         "references": len(bundle.references),
-        "citations": len(bundle.citations),
     }
 
 

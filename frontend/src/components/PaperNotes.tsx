@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import type { Highlight } from "../api";
 import AutoTextarea from "./AutoTextarea";
+import Markdown from "./Markdown";
 import { notifyChange, onChange } from "../live";
 import "./PaperNotes.css";
 
@@ -18,6 +19,11 @@ interface Props {
  * Double-click to edit rather than a permanent text box: this panel is mostly
  * read while working through the timeline, and an always-live textarea invites
  * changing a note by accident when you meant to select it.
+ *
+ * Read, a note is rendered as Markdown with its mathematics typeset — notes
+ * about papers are full of both, and "$\\eta$ is the learning rate" written in
+ * a list is worth reading as one. Editing shows the source, so what you typed
+ * is what you get back.
  */
 export default function PaperNotes({ paperId, initialNote = "", onOpenReader }: Props) {
   const [note, setNote] = useState(initialNote);
@@ -95,7 +101,11 @@ export default function PaperNotes({ paperId, initialNote = "", onOpenReader }: 
           }}
           title="Double-click to edit"
         >
-          {note.trim() || "No note yet. Double-click to write one."}
+          {note.trim() ? (
+            <Markdown>{note}</Markdown>
+          ) : (
+            "No note yet. Double-click to write one."
+          )}
         </div>
       )}
 
@@ -144,7 +154,11 @@ export default function PaperNotes({ paperId, initialNote = "", onOpenReader }: 
                   }}
                   title="Double-click to edit"
                 >
-                  {h.comment || "No note. Double-click to add one."}
+                  {h.comment ? (
+                    <Markdown>{h.comment}</Markdown>
+                  ) : (
+                    "No note. Double-click to add one."
+                  )}
                 </div>
               )}
             </li>

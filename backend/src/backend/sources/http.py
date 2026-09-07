@@ -71,6 +71,32 @@ def _bucket(host: str) -> _Bucket:
 _API_KEYS: dict[str, str] = {}
 
 
+#: When set, no request leaves the machine.
+#:
+#: A build should be reproducible and should not depend on a network, an API
+#: budget, or what a third party happens to say today — nor quietly send a
+#: contact email to ORCID and OpenAlex hundreds of times while it runs. The
+#: static export turns this on, and every source then behaves as it does when
+#: a service is unreachable: SourceError, which each caller already handles by
+#: falling back to what the library holds.
+_offline = False
+#: What was refused, so a caller can report which data is missing and why.
+_refused: list[str] = []
+
+
+def set_offline(value: bool) -> list[str]:
+    """Turn the network off (or back on). Returns what was refused meanwhile."""
+    global _offline
+    _offline = value
+    refused = list(_refused)
+    _refused.clear()
+    return refused
+
+
+def offline() -> bool:
+    return _offline
+
+
 def set_api_key(host: str, key: str) -> None:
     """Register (or clear, with a blank key) the bearer token for one host."""
     if key:
@@ -152,6 +178,15 @@ async def _get(
     key = _API_KEYS.get(host or "")
     if key:
         headers = {**(headers or {}), "Authorization": f"Bearer {key}"}
+    # Before the retry loop, not inside it. An offline build is a decision,
+    # not a flaky connection: refusing further in would raise httpx.ConnectError
+    # from the transport, which the loop below cannot tell from a real network
+    # fault, so it would sleep its way through an exponential backoff for every
+    # call that was never going to be made.
+    if _offline:
+        _refused.append(f"{source}: {url}")
+        raise SourceError(source, "offline: this build makes no network requests")
+
     attempts = max_retries or RETRY_BUDGET.get(source, MAX_RETRIES)
     cap = MAX_BACKOFF.get(source, 16.0)
     last: Exception | None = None
@@ -194,8 +229,23 @@ async def _get(
     raise SourceError(source, f"gave up after {attempts} attempts ({last})")
 
 
+class _RefuseTransport(httpx.AsyncBaseTransport):
+    """Backstop for code that reaches for httpx without going through get_json.
+
+    get_json covers the source modules, but a portrait download or a PDF probe
+    calls the client directly. Refusing at the transport means "no requests"
+    is a property of the client rather than a promise each call site has to
+    keep.
+    """
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        _refused.append(f"direct: {request.url}")
+        raise httpx.ConnectError("offline: this build makes no network requests")
+
+
 def make_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
         follow_redirects=True,
         headers={"User-Agent": "Breadcrumbs/0.1 (literature study tool)"},
+        transport=_RefuseTransport() if _offline else None,
     )

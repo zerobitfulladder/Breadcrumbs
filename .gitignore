@@ -7,3 +7,12 @@ __pycache__/
 *.db-wal
 *.db-shm
 .DS_Store
+
+# The published read-only copy (make pages). Build output: regenerate it with
+# `make pages` rather than committing 13MB of it. The directory itself is kept
+# so the backend's /readonly mount has somewhere to look.
+site/*
+!site/.gitkeep
+
+# Copies the published copy into a personal site. Machine-specific paths.
+publish-library.sh

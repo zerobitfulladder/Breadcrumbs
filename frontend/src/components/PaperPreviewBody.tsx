@@ -18,10 +18,9 @@ interface Props {
   versions: WorkVersion[];
   versionsError?: string | null;
   refs: EdgeState;
-  cites: EdgeState;
   preview: Preview | null;
   streaming: boolean;
-  /** Re-query one source, or one of "references" / "citations". */
+  /** Re-query one source, or "references". */
   onRetry?: (source: string) => void;
   /** Load a different record for the same work. */
   onUseVersion?: (identifier: string, title: string) => void;
@@ -32,7 +31,7 @@ interface Props {
 
 /**
  * Everything a lookup produced: source panels, the merged record, other
- * versions of the same work, and the reference and citation lists.
+ * versions of the same work, and the reference list.
  *
  * Shared by the Add page and the preview card opened from an author's
  * bibliography so the two can never drift apart.
@@ -44,7 +43,6 @@ export default function PaperPreviewBody({
   versions,
   versionsError,
   refs,
-  cites,
   preview,
   streaming,
   onRetry,
@@ -54,8 +52,7 @@ export default function PaperPreviewBody({
 }: Props) {
   const [openSource, setOpenSource] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
-  const [tab, setTab] = useState<"refs" | "cites">("cites");
-  const edges = tab === "cites" ? cites : refs;
+  const edges = refs;
 
   async function retry(source: string) {
     setRetrying(source);
@@ -95,7 +92,6 @@ export default function PaperPreviewBody({
       <div className="add-stats">
         <Stat label="Authors" value={merged?.authors?.length} pending={!merged} />
         <Stat label="References" value={refs.count} pending={refs.loading} />
-        <Stat label="Citations" value={cites.count} pending={cites.loading} />
         <Stat
           label="Links on save"
           value={preview?.counts.would_link_now}
@@ -337,20 +333,15 @@ export default function PaperPreviewBody({
 
       <section>
         <div className="add-tabs">
-          <button className={tab === "cites" ? "is-active" : ""} onClick={() => setTab("cites")}>
-            Citing papers {cites.loading ? "…" : `(${cites.count})`}
-          </button>
-          <button className={tab === "refs" ? "is-active" : ""} onClick={() => setTab("refs")}>
+          <button className="is-active">
             References {refs.loading ? "…" : `(${refs.count})`}
           </button>
           <button
             className="retry"
-            onClick={() => void retry(tab === "cites" ? "citations" : "references")}
+            onClick={() => void retry("references")}
             disabled={!preview || retrying !== null || streaming || disabled}
           >
-            {retrying === (tab === "cites" ? "citations" : "references")
-              ? "Retrying…"
-              : "Retry this list"}
+            {retrying === "references" ? "Retrying…" : "Retry this list"}
           </button>
         </div>
         {edges.note && <p className="add-note">{edges.note}</p>}

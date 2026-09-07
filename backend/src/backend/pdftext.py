@@ -35,6 +35,22 @@ def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
 
 
+def join_broken_words(text: str) -> str:
+    """Undo hyphenation left by the typesetter's line breaks.
+
+    A justified column breaks words at the margin, and extracting the text
+    keeps the hyphen: a passage comes out reading "K-means clus- tering ... no
+    hyper- parameters". That is the page's layout, not the author's words, and
+    it should not be what a highlight stores.
+
+    The rule is a hyphen followed by a break and a lowercase letter. A compound
+    that happens to break at its own hyphen ("state-of-the-" / "art") is joined
+    wrongly, which is the accepted cost of doing this without a dictionary; the
+    line-aware version below is used wherever the layout is still available.
+    """
+    return re.sub(r"(\w)-\s+(?=[^\W\dA-Z_])", r"\1", text or "")
+
+
 def fold(text: str) -> str:
     """Lowercase alphanumerics only — the form quotes are matched in.
 
@@ -86,6 +102,32 @@ def outline(path: Path) -> list[dict[str, Any]]:
             for level, title, page in doc.get_toc()
             if (title or "").strip() and page > 0
         ]
+
+
+def _join_words(words: list[Any], first: int, last: int) -> str:
+    """Words back into a sentence, mending anything broken across a line.
+
+    More exact than the text-only rule: the words carry their line number, so a
+    hyphen is only dropped when the break really is a line break rather than
+    part of the word.
+    """
+    out: list[str] = []
+    for i in range(first, last + 1):
+        word = words[i][4]
+        nxt = words[i + 1] if i < last else None
+        broke_here = (
+            nxt is not None
+            and word.endswith("-")
+            and len(word) > 1
+            # (block, line): a different line is a real break.
+            and (words[i][5], words[i][6]) != (nxt[5], nxt[6])
+            and nxt[4][:1].islower()
+        )
+        if broke_here:
+            out.append(word[:-1])          # no hyphen, no space: one word
+        else:
+            out.append(word + (" " if nxt is not None else ""))
+    return "".join(out).strip()
 
 
 def _page_index(page: Any) -> tuple[list[Any], str, list[int]]:
@@ -160,7 +202,7 @@ def find_quote(
                 # What the document actually says, which is what should be
                 # stored: it may differ from the quote in exactly the ways the
                 # fold ignored.
-                "text": " ".join(words[i][4] for i in range(first, last + 1)),
+                "text": _join_words(words, first, last),
                 "rects": _merge_by_line(rects, width, height),
             }
     return None

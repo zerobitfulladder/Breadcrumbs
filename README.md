@@ -13,9 +13,16 @@ with your own note about why each one exists, and lays papers out in time so
 development is legible rather than tangled.
 
 Nothing is auto-imported. Adding a paper records the identifiers of everything
-it cites and everything citing it, but creates no other paper rows. When you
-later add one of those papers yourself, the link appears on its own. A library
-of 131 papers carries about 15,000 of these pending edges, waiting.
+it cites — the whole bibliography, uncapped — but creates no other paper rows.
+When you later add one of those papers yourself, the link appears on its own.
+
+Only that one direction is fetched. "Who cites this" is unbounded — tens of
+thousands of papers for well-known work — so storing it means storing an
+arbitrary slice, which answers nothing. A bibliography, by contrast, is finite
+and printed in the paper itself, so it can be had in full. Nothing is lost
+inside your library: when you hold both papers, the citing one's own reference
+list is the edge, and the graph draws it from both sides. The paper view still
+has a "Cited by" tab; it lists the papers you hold that cite this one.
 
 ## Running it
 
@@ -47,13 +54,58 @@ Then open Settings and fill in two things:
 A Semantic Scholar key is optional and most people will not have one, since it
 needs an institutional address and an application. The app runs without it:
 Semantic Scholar gets a short retry budget, is skipped the moment it throttles,
-and OpenAlex supplies references and citing papers instead. What you lose is the
-sentence quoting each citation and its intent label.
+and OpenAlex supplies the references instead. What you lose is the sentence
+quoting each citation and its intent label.
 
 Your library lives in `~/Breadcrumbs` (`BREADCRUMBS_HOME` overrides it):
 `library.db` plus `pdfs/` and `authors/` as plain files. Notes and highlights are
 rows in the database, not files — a highlight stores its rectangles as fractions
 of the page, so it survives re-downloading the PDF at any zoom.
+
+## Publishing a read-only copy
+
+`make pages` freezes the library into a directory of static files — no backend,
+no database, no Node — that any static host will serve, GitHub Pages included.
+
+```bash
+make pages                          # builds ./site
+python3 -m http.server -d site 8080 # look at it
+```
+
+It is the same reader, with everything that writes removed: no adding papers,
+no settings, no assistant, no editing. Papers, authors, references, the links
+between them and your notes are all there to read.
+
+Two things are deliberately left out. **PDFs**, because a paywalled article is
+the publisher's to distribute and not yours — what you may share is the record
+and your own writing about it. And **settings and conversations**, because that
+table holds your API keys. Only the routes listed in `export_static.ROUTES` are
+written, so nothing is published by having been forgotten.
+
+Edit `pages.json` before you publish — it sets the repository link and the
+wording of the "what is this?" panel in the corner:
+
+```json
+{
+  "repo_url": "https://github.com/YOUR-USERNAME/Breadcrumbs",
+  "owner": "Ada",
+  "title": "",
+  "intro": ""
+}
+```
+
+It is read at export time and shipped as data, so changing the blurb means
+editing that file and re-running `make pages`, not rebuilding anything. Blank
+fields fall back to sensible defaults.
+
+An author's wider output is skipped by default: listing it means two live
+OpenAlex requests per author, which is several minutes for a few hundred of
+them and is OpenAlex's data about the world rather than anything of yours. Pass
+`--with-works` to `backend.export_static` if you want it.
+
+While `make dev` is running the published copy is served at
+http://localhost:5173/readonly/ as well, so you can check what a visitor would
+see — including everything missing from it — before pushing anything.
 
 ## The grid
 
@@ -92,10 +144,10 @@ largest, names on A. Below it, a map of the author affiliations for whatever is
 in focus.
 
 **Right** — the selected paper: status, authors with affiliations, a DOI you
-click to copy, its note and highlights, and its references and citing papers
-split into two tabs with a filter for the ones you do not hold. Papers you do
-not have can be previewed in place — the same lookup the Add page runs, shown as
-a card, saving nothing.
+click to copy, its note and highlights, and two tabs: its full reference list,
+with a filter for the ones you do not hold, and the papers in your library that
+cite it. Papers you do not have can be previewed in place — the same lookup the
+Add page runs, shown as a card, saving nothing.
 
 Papers and authors both take a **star**, in the panel and in the list rows.
 
@@ -112,7 +164,7 @@ until you press save.
 
 | Source | Supplies | Key |
 |---|---|---|
-| OpenAlex | identity, authors, institutions, topics, references, citing papers | free key, strongly advised |
+| OpenAlex | identity, authors, institutions, topics, references | free key, strongly advised |
 | Crossref | publisher metadata, licence, title search | none |
 | Semantic Scholar | search suggestions, influential-citation count, fallback | rarely needed |
 | Unpaywall | legal open-access PDF links | email required |

@@ -63,8 +63,28 @@ export default function AutoTextarea({
     el.style.overflowY = content > line * maxRows ? "auto" : "hidden";
   };
 
-  // Runs on value changes and on mount, before paint, so there is no flicker.
-  useLayoutEffect(resize);
+  // Before paint, so there is no flicker — but only when something that
+  // affects the height changed. With no dependency list this ran after every
+  // render of the parent, and each run forces a synchronous reflow: writes,
+  // then a scrollHeight read, then writes. In a chat panel that meant a layout
+  // flush per keystroke, on top of re-rendering the conversation.
+  useLayoutEffect(resize, [rest.value, rest.defaultValue, minRows, maxRows]);
+
+  // Width changes alter the wrapping, and so the height. This is what the
+  // dependency-free version was covering by accident.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let last = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth === last) return;   // height changes are our own doing
+      last = el.clientWidth;
+      resize();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <textarea

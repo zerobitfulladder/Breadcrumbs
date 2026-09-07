@@ -76,6 +76,12 @@ function mergeByLine(rects: DOMRect[], box: DOMRect): HighlightRect[] {
 /** Stable node: an inline element would remount the Document each render. */
 const LOADING = <div className="pv-loading">Loading the document…</div>;
 
+/**
+ * Resolutions a page is ever drawn at. Coarse on purpose — each change costs a
+ * repaint of every page — with CSS covering everything in between.
+ */
+const RENDER_STEPS = [0.75, 1, 1.5, 2.25, 3];
+
 export interface Selection {
   page: number;
   text: string;
@@ -84,6 +90,12 @@ export interface Selection {
   pageHeight: number;
   /** Where to anchor the popover, in client coordinates. */
   anchor: { x: number; y: number };
+  /**
+   * "text" came from selecting words; "region" from dragging a box over a
+   * scanned page, and carries no text. The popover uses this to drop the
+   * choices that need words to work on.
+   */
+  kind: "text" | "region";
 }
 
 interface Props {
@@ -130,7 +142,33 @@ export default function PdfView({
   const [pageCount, setPageCount] = useState(0);
   // 60%: an academic page at full width is wider than most reading panes, and
   // starting zoomed out shows the whole column.
-  const [scale, setScale] = useState(0.6);
+  /**
+   * The resolution the canvases are drawn at — deliberately coarser than the
+   * zoom, and changed as rarely as possible.
+   *
+   * Changing it is the flicker. react-pdf redraws a page by resizing its
+   * canvas, and resizing a canvas clears it, so there is a transparent gap
+   * until the render task repaints. Tying that to the zoom meant a flash at
+   * the end of every gesture.
+   *
+   * Snapping to a ladder means most zooming needs no redraw at all, and the
+   * value only ever rises: coming back down reuses the sharper canvas, so the
+   * way out of a zoom is always free. Drawn larger than shown, CSS scales it
+   * down, which also looks better than drawing at exactly the display size.
+   */
+  const [renderScale, setRenderScale] = useState(RENDER_STEPS[0]);
+  /**
+   * The zoom the gesture is at, which is not always the one rendered.
+   *
+   * Re-rendering a PDF page is expensive, and doing it on every wheel tick
+   * tore the canvas down and put a placeholder up dozens of times per gesture —
+   * the flicker to blank. So the wheel moves `live`, the pages are scaled by
+   * CSS in the meantime, and the canvas is re-rendered once the gesture stops.
+   *
+   * `zoom` rather than `transform`: zoom affects layout, so the scroll extents
+   * grow with the preview and scrolling keeps working mid-gesture.
+   */
+  const [live, setLive] = useState(0.6);
   const [width, setWidth] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Our own painting of the live selection, per page. */
@@ -140,6 +178,32 @@ export default function PdfView({
   const hostRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageSizes = useRef<Map<number, { width: number; height: number }>>(new Map());
+
+  /** Draw a box instead of selecting words. Needed for scanned pages, which
+   *  have no text to select, and useful on any page for marking a figure. */
+  const [regionMode, setRegionMode] = useState(false);
+  /** Set once a page reports it has no text of its own. */
+  const [looksScanned, setLooksScanned] = useState(false);
+  const scannedPages = useRef<Set<number>>(new Set());
+  /** The box being dragged, in page fractions. */
+  const [drawing, setDrawing] = useState<{ page: number; rect: HighlightRect } | null>(null);
+  /**
+   * The note shown while the pointer rests on a mark that carries one.
+   *
+   * Held as the mark it belongs to — page plus rectangle in page fractions —
+   * rather than as screen coordinates. Pixels captured on hover go stale the
+   * moment anything moves, which left the bubble hanging in place while the
+   * page scrolled out from under it.
+   */
+  const [hoveredNote, setHoveredNote] = useState<{
+    text: string;
+    page: number;
+    rect: HighlightRect;
+  } | null>(null);
+  /** Where that mark currently is on screen; recomputed as the page moves. */
+  const [notePos, setNotePos] = useState<{ x: number; top: number; bottom: number } | null>(null);
+  const hoverOut = useRef<number | null>(null);
+  const dragStart = useRef<{ page: number; x: number; y: number; box: DOMRect } | null>(null);
 
   useLayoutEffect(() => {
     const el = hostRef.current;
@@ -161,14 +225,7 @@ export default function PdfView({
    * divided by the rendered page box. That makes the stored geometry
    * independent of how wide the reader happens to be.
    */
-  const readSelection = useCallback((event?: PointerEvent) => {
-    // Clicking a button in the selection menu collapses the browser selection,
-    // which would otherwise be read here as "nothing selected" and wipe the
-    // menu the moment it was used. The rectangles are already captured, so
-    // anything inside the menu is simply ignored.
-    const target = event?.target as Element | null;
-    if (target?.closest?.("[data-keep-selection]")) return;
-
+  const readSelection = useCallback(() => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || !selection.rangeCount) {
       onSelect(null);
@@ -207,8 +264,191 @@ export default function PdfView({
       pageWidth: size?.width ?? box.width,
       pageHeight: size?.height ?? box.height,
       anchor: { x: last.left + last.width / 2, y: last.bottom },
+      kind: "text",
     });
   }, [onSelect]);
+
+  /**
+   * Drag a box over a page and turn it into a highlight.
+   *
+   * A scanned PDF is an image: there are no glyphs to select, so the text path
+   * has nothing to work with and a note cannot be anchored to anything. The
+   * geometry is the same either way — rectangles as fractions of the page — so
+   * a drawn box stores and paints exactly like a selected passage, and carries
+   * no quoted text.
+   */
+  const onRegionPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!regionMode || e.button !== 0) return;
+      const pageEl = (e.target as HTMLElement).closest(".pv-page") as HTMLElement | null;
+      if (!pageEl) return;
+      e.preventDefault();
+      const box = pageEl.getBoundingClientRect();
+      dragStart.current = {
+        page: Number(pageEl.dataset.page),
+        x: (e.clientX - box.left) / box.width,
+        y: (e.clientY - box.top) / box.height,
+        box,
+      };
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      onSelect(null);
+    },
+    [regionMode, onSelect],
+  );
+
+  const onRegionPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const start = dragStart.current;
+    if (!start) return;
+    const x = (e.clientX - start.box.left) / start.box.width;
+    const y = (e.clientY - start.box.top) / start.box.height;
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    setDrawing({
+      page: start.page,
+      rect: {
+        x: clamp(Math.min(start.x, x)),
+        y: clamp(Math.min(start.y, y)),
+        w: Math.abs(clamp(x) - clamp(start.x)),
+        h: Math.abs(clamp(y) - clamp(start.y)),
+      },
+    });
+  }, []);
+
+  const onRegionPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const start = dragStart.current;
+      dragStart.current = null;
+      if (!start || !drawing) {
+        setDrawing(null);
+        return;
+      }
+      const { page, rect } = drawing;
+      setDrawing(null);
+      // A click, or a slip of the hand, is not a region. Below this it is
+      // almost certainly a misfire, and an invisible highlight is worse than
+      // none: it cannot be seen to be removed.
+      if (rect.w < 0.01 || rect.h < 0.005) return;
+      const size = pageSizes.current.get(page);
+      onSelect({
+        page,
+        text: "",
+        rects: [rect],
+        pageWidth: size?.width ?? start.box.width,
+        pageHeight: size?.height ?? start.box.height,
+        anchor: { x: e.clientX, y: e.clientY },
+        kind: "region",
+      });
+    },
+    [drawing, onSelect],
+  );
+
+  /**
+   * Show a highlight's note under the pointer.
+   *
+   * A note you cannot see without clicking is a note you forget you wrote. The
+   * native `title` tooltip technically showed it, but only after about a
+   * second and with no way to style or place it.
+   *
+   * Coordinates are read from the mark and kept in client space: the pages sit
+   * inside a CSS `zoom` wrapper and a scroll container, either of which would
+   * otherwise scale or clip the bubble.
+   */
+  /** Take the bubble down now. */
+  const hideNoteNow = useCallback(() => {
+    if (hoverOut.current) {
+      window.clearTimeout(hoverOut.current);
+      hoverOut.current = null;
+    }
+    setHoveredNote(null);
+  }, []);
+
+  /**
+   * Take it down shortly, so crossing the gap between two rectangles of one
+   * passage does not blink it off and straight back on.
+   *
+   * A pending hide is left alone rather than restarted. Restarting it meant
+   * every pointermove pushed the deadline back, so the bubble outlived the
+   * hover for as long as the pointer kept moving and only vanished once it
+   * came to rest.
+   */
+  const hideNote = useCallback(() => {
+    if (hoverOut.current) return;
+    hoverOut.current = window.setTimeout(() => {
+      hoverOut.current = null;
+      setHoveredNote(null);
+    }, 90);
+  }, []);
+
+  const trackNote = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const pageEl = (e.currentTarget as HTMLElement).closest(".pv-page") as HTMLElement | null;
+      if (!pageEl) return;
+      const page = Number(pageEl.dataset.page);
+      const box = pageEl.getBoundingClientRect();
+      const px = (e.clientX - box.left) / box.width;
+      const py = (e.clientY - box.top) / box.height;
+
+      // Last drawn wins, matching what the eye sees where marks overlap.
+      let found: { text: string; r: HighlightRect } | null = null;
+      for (const h of highlights) {
+        if (h.page !== page || !h.comment) continue;
+        for (const r of h.rects) {
+          if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
+            found = { text: h.comment, r };
+          }
+        }
+      }
+
+      if (!found) {
+        if (hoveredNote) hideNote();
+        return;
+      }
+      if (hoverOut.current) {
+        window.clearTimeout(hoverOut.current);
+        hoverOut.current = null;
+      }
+      // Steady while the pointer stays inside the same mark: re-anchoring on
+      // every move would make the bubble crawl around under the cursor.
+      if (hoveredNote?.text === found.text) return;
+      setHoveredNote({ text: found.text, page, rect: found.r });
+    },
+    [highlights, hoveredNote, hideNote],
+  );
+
+  useEffect(() => () => {
+    if (hoverOut.current) window.clearTimeout(hoverOut.current);
+  }, []);
+
+  // Follow the mark while the page moves under it. The bubble is positioned
+  // fixed — it has to be, or the zoom wrapper would scale it and the scroll
+  // container would clip it — so its coordinates are recomputed rather than
+  // inherited from a scrolling ancestor.
+  useLayoutEffect(() => {
+    // Nothing to clear when there is no note: the bubble is only rendered when
+    // both the note and a position exist, and this runs before paint, so a
+    // position left over from the previous mark is never shown.
+    if (!hoveredNote) return;
+    const scroller = scrollRef.current;
+    const place = () => {
+      const pageEl = scroller?.querySelector<HTMLElement>(
+        `.pv-page[data-page="${hoveredNote.page}"]`,
+      );
+      if (!pageEl) return;
+      const box = pageEl.getBoundingClientRect();
+      const r = hoveredNote.rect;
+      setNotePos({
+        x: box.left + (r.x + r.w / 2) * box.width,
+        top: box.top + r.y * box.height,
+        bottom: box.top + (r.y + r.h) * box.height,
+      });
+    };
+    place();
+    scroller?.addEventListener("scroll", place, { passive: true });
+    window.addEventListener("resize", place);
+    return () => {
+      scroller?.removeEventListener("scroll", place);
+      window.removeEventListener("resize", place);
+    };
+  }, [hoveredNote]);
 
   // Scroll to whatever the assistant is pointing at. Centred rather than
   // scrolled-to-top: a passage in the middle of a page is easier to find when
@@ -269,6 +509,23 @@ export default function PdfView({
   // Ctrl-wheel zooms the document, not the browser window — but only while the
   // pointer is over the pages. Elsewhere it stays the browser's own zoom.
   // Registered non-passively so the default can be prevented.
+  // Read inside the wheel listener, which is bound once. Written there too, so
+  // two ticks in one frame compose instead of both reading the same value.
+  const liveRef = useRef(live);
+  liveRef.current = live;
+
+  /** The zoom the DOM is currently laid out at, which lags `live` by a commit. */
+  const appliedLive = useRef(live);
+  /**
+   * Where to put the scroll once the new zoom is in the DOM.
+   *
+   * Held in layout units at zoom 1, so it stays valid however many ticks land
+   * before the correction runs.
+   */
+  const anchor = useRef<{ baseX: number; baseY: number; viewX: number; viewY: number } | null>(
+    null,
+  );
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -277,19 +534,88 @@ export default function PdfView({
       e.preventDefault();
       // ~3% per wheel notch. The old exponent moved 40% a click, which
       // overshot every time.
-      setScale((prev) =>
-        Math.min(3, Math.max(0.5, prev * Math.pow(0.9997, e.deltaY))),
-      );
+      const prev = liveRef.current;
+      const next = Math.min(3, Math.max(0.5, prev * Math.pow(0.9997, e.deltaY)));
+      if (next === prev) return;
+
+      liveRef.current = next;
+
+      // Keep the point under the cursor still. Recorded in layout units at
+      // zoom 1 against the zoom the DOM actually has, so it does not matter how
+      // many ticks arrive before the correction is applied.
+      const rect = el.getBoundingClientRect();
+      const viewX = e.clientX - rect.left;
+      const viewY = e.clientY - rect.top;
+      const at = appliedLive.current;
+      anchor.current = {
+        baseX: (el.scrollLeft + viewX) / at,
+        baseY: (el.scrollTop + viewY) / at,
+        viewX,
+        viewY,
+      };
+      setLive(next);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
+  /**
+   * Put the scroll back after the zoom is in the DOM.
+   *
+   * A layout effect, not requestAnimationFrame: rAF can run before React has
+   * committed, so the scroll was written against the old, smaller layout and
+   * the browser clamped it — then the content grew and the view slid. Here the
+   * new size is already in place and scrollHeight is final.
+   */
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const a = anchor.current;
+    if (el && a) {
+      el.scrollLeft = a.baseX * live - a.viewX;
+      el.scrollTop = a.baseY * live - a.viewY;
+      anchor.current = null;
+    }
+    appliedLive.current = live;
+  }, [live]);
+
+  /** The +/- buttons: one deliberate step, rendered at once. */
+  const step = useCallback((delta: number) => {
+    setLive(Math.min(3, Math.max(0.5, Math.round((liveRef.current + delta) * 100) / 100)));
+  }, []);
+
+  // Raise the resolution once the gesture settles, and only if the zoom has
+  // outgrown what is drawn. Debounced so sweeping across several steps in one
+  // gesture costs one redraw rather than one per step.
   useEffect(() => {
-    const onUp = (e: PointerEvent) => window.setTimeout(() => readSelection(e), 0);
+    const needed = RENDER_STEPS.find((s) => s >= live) ?? RENDER_STEPS[RENDER_STEPS.length - 1];
+    if (needed <= renderScale) return;
+    const timer = window.setTimeout(() => setRenderScale(needed), 180);
+    return () => window.clearTimeout(timer);
+  }, [live, renderScale]);
+
+  useEffect(() => {
+    const onUp = (e: PointerEvent) => {
+      // Clicking a button in the selection menu collapses the browser
+      // selection, which would otherwise be read as "nothing selected" and
+      // wipe the menu the moment it was used.
+      //
+      // Whether the click was in the menu has to be decided *now*. Reading the
+      // selection is deferred a tick so the browser has settled, and by then
+      // React has re-rendered — pressing Note swaps the menu's contents for the
+      // note field, detaching the very button that was clicked. closest() on a
+      // detached node finds none of its old ancestors, so the check quietly
+      // failed and the note field was dismissed as it appeared.
+      const inMenu = !!(e.target as Element | null)?.closest?.("[data-keep-selection]");
+      window.setTimeout(() => {
+        // In box mode there is no DOM selection to read — the drag handler has
+        // just published one of its own. Reading here would find nothing
+        // selected and clear it, closing the menu the instant it appeared.
+        if (!inMenu && !regionMode) readSelection();
+      }, 0);
+    };
     document.addEventListener("pointerup", onUp);
     return () => document.removeEventListener("pointerup", onUp);
-  }, [readSelection]);
+  }, [readSelection, regionMode]);
 
   // Which page is being read. Watched rather than computed from scroll offset
   // so it stays right at any zoom and with pages of differing heights.
@@ -322,13 +648,30 @@ export default function PdfView({
   // react-pdf re-renders a page whenever a prop identity changes, and an inline
   // callback is a new identity every render — so any state change here made
   // every canvas redraw, which is the flash on scroll. These are stable.
-  const onPageLoad = useCallback((page: { view: number[]; pageNumber: number }) => {
-    const view = page.view;
-    pageSizes.current.set(page.pageNumber, {
-      width: view[2] - view[0],
-      height: view[3] - view[1],
-    });
-  }, []);
+  const onPageLoad = useCallback(
+    (page: {
+      view: number[];
+      pageNumber: number;
+      getTextContent?: () => Promise<{ items: unknown[] }>;
+    }) => {
+      const view = page.view;
+      pageSizes.current.set(page.pageNumber, {
+        width: view[2] - view[0],
+        height: view[3] - view[1],
+      });
+
+      // A scanned page carries no text items at all. Asking the page itself is
+      // exact, where inspecting the rendered text layer would race the render.
+      // Once one page comes back empty, offer the box tool rather than leaving
+      // the reader looking broken: selecting there can never do anything.
+      void page.getTextContent?.().then((content) => {
+        if (content.items.length) return;
+        scannedPages.current.add(page.pageNumber);
+        setLooksScanned(true);
+      }).catch(() => undefined);
+    },
+    [],
+  );
 
   const onDocumentLoad = useCallback(
     ({ numPages }: { numPages: number }) => setPageCount(numPages),
@@ -355,14 +698,26 @@ export default function PdfView({
   return (
     <div className="pv-root" ref={hostRef}>
       <div className="pv-toolbar">
-        <button onClick={() => setScale((v) => Math.max(0.5, v - 0.1))}>−</button>
-        <span className="pv-zoom">{Math.round(scale * 100)}%</span>
-        <button onClick={() => setScale((v) => Math.min(3, v + 0.1))}>+</button>
+        <button onClick={() => step(-0.1)}>−</button>
+        <span className="pv-zoom">{Math.round(live * 100)}%</span>
+        <button onClick={() => step(0.1)}>+</button>
         <span className="pv-pages">
           {pageCount ? `${pageCount} page${pageCount === 1 ? "" : "s"}` : ""}
         </span>
+        <button
+          className={`pv-region${regionMode ? " is-on" : ""}`}
+          onClick={() => setRegionMode((on) => !on)}
+          title="Draw a box to highlight part of the page. Needed on scanned PDFs."
+          aria-pressed={regionMode}
+        >
+          ▢ Box
+        </button>
         <span className="pv-hint">
-          select text to highlight · ctrl-scroll to zoom
+          {regionMode
+            ? "drag a box to highlight · ctrl-scroll to zoom"
+            : looksScanned
+              ? "this PDF is scanned — use Box to highlight · ctrl-scroll to zoom"
+              : "select text to highlight · ctrl-scroll to zoom"}
         </span>
       </div>
 
@@ -374,6 +729,9 @@ export default function PdfView({
           // is what made the document appear zoomed out for a moment.
           <div className="pv-loading">Measuring…</div>
         ) : (
+          // Scaled by CSS while a gesture is in flight, exactly 1 the rest of
+          // the time, so nothing is distorted once the canvas has caught up.
+          <div className="pv-zoomer" style={{ zoom: live / renderScale }}>
           <Document
             file={file}
             onLoadSuccess={onDocumentLoad}
@@ -381,10 +739,21 @@ export default function PdfView({
             loading={LOADING}
           >
             {pageNumbers.map((number) => (
-              <div className="pv-page" key={number} data-page={number}>
+              <div
+                className={`pv-page${regionMode ? " is-drawing" : ""}`}
+                key={number}
+                data-page={number}
+                onPointerDown={onRegionPointerDown}
+                onPointerMove={(e) => {
+                  onRegionPointerMove(e);
+                  if (!dragStart.current) trackNote(e);
+                }}
+                onPointerUp={onRegionPointerUp}
+                onPointerLeave={hideNoteNow}
+              >
                 <Page
                   pageNumber={number}
-                  width={width * scale}
+                  width={width * renderScale}
                   renderAnnotationLayer={false}
                   renderTextLayer
                   // Native page size in points is recorded here, so a stored
@@ -407,6 +776,17 @@ export default function PdfView({
                         }}
                       />
                     ))}
+                  {drawing?.page === number && (
+                    <span
+                      className="pv-drawing"
+                      style={{
+                        left: `${drawing.rect.x * 100}%`,
+                        top: `${drawing.rect.y * 100}%`,
+                        width: `${drawing.rect.w * 100}%`,
+                        height: `${drawing.rect.h * 100}%`,
+                      }}
+                    />
+                  )}
                   {selBands?.page === number &&
                     selBands.rects.map((r, i) => (
                       <span
@@ -434,7 +814,9 @@ export default function PdfView({
                           height: `${r.h * 100}%`,
                           background: h.color ?? "#fde047",
                         }}
-                        title={h.comment || h.quoted || undefined}
+                        // Only as a fallback: a note gets the bubble below,
+                        // and two tooltips for one mark is one too many.
+                        title={h.comment ? undefined : h.quoted || undefined}
                         onClick={() => onHighlightClick?.(h.id)}
                       />
                     )),
@@ -443,8 +825,25 @@ export default function PdfView({
               </div>
             ))}
           </Document>
+          </div>
         )}
       </div>
+
+      {hoveredNote && notePos && (
+        <div
+          className="pv-note"
+          role="tooltip"
+          style={
+            // Above the mark when there is room, below it otherwise, so a
+            // highlight near the top of the window still shows its note.
+            notePos.top > 96
+              ? { left: notePos.x, top: notePos.top - 8, transform: "translate(-50%, -100%)" }
+              : { left: notePos.x, top: notePos.bottom + 8, transform: "translate(-50%, 0)" }
+          }
+        >
+          {hoveredNote.text}
+        </div>
+      )}
     </div>
   );
 }

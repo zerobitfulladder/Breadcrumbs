@@ -97,7 +97,6 @@ export default function PaperPreviewCard({
               versions={s.versions}
               versionsError={s.versionsError}
               refs={s.refs}
-              cites={s.cites}
               preview={s.preview}
               streaming={s.streaming}
               disabled={saving}

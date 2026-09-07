@@ -130,3 +130,75 @@
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--text-dim); margin: 0 0 6px; font-weight: 600;
 }
+
+/* Deleting a paper. Kept at the foot of the panel, behind a confirmation, and
+   styled to look like what it is — the one action here that cannot be undone. */
+.app-danger { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border); }
+.app-danger-open {
+  background: none; border: 1px solid var(--border); color: var(--text-dim);
+  border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+}
+.app-danger-open:hover { color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+.app-danger-note { font-size: 11.5px; color: var(--text-dim); line-height: 1.55; margin: 0 0 9px; }
+.app-danger-row { display: flex; gap: 8px; align-items: center; }
+.app-danger-row button {
+  border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--border); background: none; color: var(--text);
+}
+.app-danger-go {
+  background: var(--danger, #dc2626) !important;
+  border-color: var(--danger, #dc2626) !important; color: #fff !important;
+}
+.app-danger-row button:disabled { opacity: 0.55; cursor: default; }
+
+/* A note on a published copy: the same words, with nothing to type into. */
+.app-note-ro {
+  margin: 10px 0 0; padding: 9px 11px;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--surface-2); color: var(--text);
+  font-size: 12.5px; line-height: 1.6; white-space: pre-wrap;
+}
+
+/* The abstract, folded away by default: it is long, and the panel's job is to
+   let you scan a paper rather than read it here. */
+.app-abstract { margin-top: 16px; }
+.app-abstract > summary {
+  cursor: pointer; font-size: 11px; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-dim); user-select: none;
+}
+.app-abstract > summary:hover { color: var(--text); }
+.app-abstract > div {
+  margin-top: 8px; font-size: 12.5px; line-height: 1.6; color: var(--text);
+}
+.app-abstract p { margin: 0 0 8px; }
+
+/* Marked passages, shown beside the paper as well as in the reader. On a
+   published copy there is no PDF to open, so this is the whole of the reading
+   that survives — which is reason enough for it to live here too. */
+.app-marks { margin-top: 18px; }
+.app-marks h4 { margin: 0 0 8px; }
+.app-marks-n {
+  margin-left: 6px; font-weight: 400; font-size: 11px; color: var(--text-dim);
+}
+.app-marks ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.app-marks li {
+  display: flex; gap: 8px; padding: 7px 9px;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--surface-2); font-size: 12px; line-height: 1.5;
+}
+.app-marks li.is-clickable { cursor: pointer; }
+.app-marks li.is-clickable:hover { border-color: var(--accent); }
+.app-mark-page {
+  flex: 0 0 auto; align-self: flex-start;
+  padding: 1px 6px; border-radius: 4px;
+  font-size: 10.5px; font-weight: 600; color: #111;
+}
+.app-mark-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.app-marks q { color: var(--text-dim); font-style: italic; }
+.app-mark-note { color: var(--text); white-space: pre-wrap; }
+
+/* As in PaperNotes: pre-wrap belongs to the source, not to rendered Markdown. */
+.app-note-ro .md, .app-mark-note .md { white-space: normal; }
+.app-note-ro .md { font-size: 12.5px; line-height: 1.6; }
+.app-mark-note .md { font-size: 12px; line-height: 1.5; }
+.app-note-ro .md .katex, .app-mark-note .md .katex { font-size: 1.02em; }
