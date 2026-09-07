@@ -1,0 +1,290 @@
+#!/usr/bin/env python3
+"""Build and run Breadcrumbs.
+
+Standard library only, and it must stay that way: the first thing anyone runs
+is `install`, which is what creates the environments the rest depends on.
+
+    ./breadcrumbs --help
+    ./breadcrumbs dev
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+BACKEND = ROOT / "backend"
+FRONTEND = ROOT / "frontend"
+DIST = FRONTEND / "dist"
+PAGES = Path(os.environ.get("PAGES", "site"))
+
+HOST = os.environ.get("HOST", "127.0.0.1")
+PORT = os.environ.get("PORT", "8000")
+
+UV = ["uv", "run", "--project", str(BACKEND)]
+
+
+class Failed(SystemExit):
+    """A step exited non-zero. Reported without a traceback."""
+
+
+def run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
+    """Run a command, echoing it first, and stop the whole script if it fails."""
+    print(f"$ {' '.join(cmd)}", flush=True)
+    result = subprocess.run(cmd, cwd=cwd or ROOT, env={**os.environ, **(env or {})})
+    if result.returncode:
+        raise Failed(result.returncode)
+
+
+def need(tool: str, why: str) -> None:
+    if shutil.which(tool) is None:
+        raise Failed(f"{tool} is not installed, and {why}.")
+
+
+# --- commands ---------------------------------------------------------------
+
+
+def cmd_install(args: argparse.Namespace) -> None:
+    """Install backend and frontend dependencies."""
+    need("uv", "the backend needs it")
+    need("npm", "the frontend bundle is built with it")
+    run(["uv", "sync", "--project", str(BACKEND)])
+    run(["npm", "ci"], cwd=FRONTEND)
+
+
+def frontend_is_stale() -> bool:
+    """Whether any frontend source is newer than the built bundle."""
+    built = DIST / "index.html"
+    if not built.is_file():
+        return True
+    newest = max(
+        (p.stat().st_mtime for p in [
+            *(FRONTEND / "src").rglob("*"),
+            FRONTEND / "index.html",
+            FRONTEND / "package.json",
+            FRONTEND / "vite.config.ts",
+        ] if p.is_file()),
+        default=0.0,
+    )
+    return newest > built.stat().st_mtime
+
+
+def cmd_build(args: argparse.Namespace) -> None:
+    """Build the frontend bundle, if anything changed."""
+    if not args.force and not frontend_is_stale():
+        print("bundle is up to date")
+        return
+    # VITE_API_BASE is emptied on purpose: the bundle then calls /api/... on
+    # whatever origin served it, so one build works on any host or port. The
+    # default is an absolute 127.0.0.1:8000, which only suits the dev server.
+    run(["npm", "run", "build"], cwd=FRONTEND, env={"VITE_API_BASE": ""})
+
+
+def cmd_serve(args: argparse.Namespace) -> None:
+    """Serve the existing build from the backend alone."""
+    if not (DIST / "index.html").is_file():
+        raise Failed("No bundle yet. Run: ./breadcrumbs build")
+    print(f"Breadcrumbs on http://{args.host}:{args.port}")
+    run([*UV, "uvicorn", "backend.api:app", "--host", args.host, "--port", str(args.port)])
+
+
+def cmd_run(args: argparse.Namespace) -> None:
+    """Build, then serve everything from the backend alone."""
+    cmd_build(argparse.Namespace(force=False))
+    cmd_serve(args)
+
+
+def cmd_dev(args: argparse.Namespace) -> None:
+    """Backend and Vite together, with reload on both."""
+    print(f"backend  http://{args.host}:{args.port}")
+    print("frontend http://localhost:5173   <- open this one")
+    if (PAGES / "index.html").is_file():
+        print("readonly http://localhost:5173/readonly/   (published copy; ./breadcrumbs pages)")
+    else:
+        print("readonly not built yet, run: ./breadcrumbs pages")
+    print()
+
+    backend = subprocess.Popen(
+        [*UV, "uvicorn", "backend.api:app", "--host", args.host, "--port", str(args.port),
+         "--reload", "--reload-dir", str(BACKEND / "src")],
+        cwd=ROOT,
+    )
+    frontend = subprocess.Popen(["npm", "run", "dev"], cwd=FRONTEND)
+
+    # One dying should take the other with it: a backend that failed to bind
+    # leaves a Vite serving a page whose every request fails, which looks like
+    # a broken app rather than a stopped one.
+    try:
+        while True:
+            for proc in (backend, frontend):
+                if proc.poll() is not None:
+                    return
+            time.sleep(0.3)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for proc in (frontend, backend):
+            if proc.poll() is None:
+                proc.send_signal(signal.SIGINT)
+        for proc in (frontend, backend):
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
+
+def cmd_dev_backend(args: argparse.Namespace) -> None:
+    """Backend only, with reload."""
+    run([*UV, "uvicorn", "backend.api:app", "--host", args.host, "--port", str(args.port),
+         "--reload", "--reload-dir", str(BACKEND / "src")])
+
+
+def cmd_dev_frontend(args: argparse.Namespace) -> None:
+    """Vite dev server only."""
+    run(["npm", "run", "dev"], cwd=FRONTEND)
+
+
+def cmd_pages(args: argparse.Namespace) -> None:
+    """Build a read-only copy of the library for static hosting."""
+    out = Path(args.out)
+    if out.exists():
+        shutil.rmtree(out)
+
+    export = [*UV, "python", "-m", "backend.export_static", "--out", str(out / "data")]
+    if args.with_works:
+        export.append("--with-works")
+    run(export)
+
+    # A relative base so the result works from a project page as happily as
+    # from a domain root, and VITE_STATIC to point the client at the export.
+    run(
+        ["npx", "vite", "build", "--base", "./", "--outDir", str((ROOT / out).resolve()),
+         "--emptyOutDir", "false"],
+        cwd=FRONTEND,
+        env={"VITE_API_BASE": "", "VITE_STATIC": "1", "VITE_STATIC_BASE": "./data"},
+    )
+
+    (out / ".nojekyll").touch()
+    # Put back the marker this command's own rmtree removed: the directory is
+    # tracked, its contents are not, and dev looks here for the published copy.
+    (out / ".gitkeep").touch()
+
+    size = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
+    print()
+    print(f"  {out}/ is ready to publish, {size / 1_048_576:.0f} MB")
+    print(f"  Preview it with:  python3 -m http.server -d {out} 8080")
+
+
+def cmd_check(args: argparse.Namespace) -> None:
+    """Typecheck the frontend and import the backend."""
+    # `tsc --noEmit` on the root tsconfig checks nothing: it is a
+    # references-only file with "files": [], so tsc has no inputs and exits 0
+    # regardless. `-b` builds the referenced projects, which is what typechecks.
+    run(["npx", "tsc", "-b", "--force"], cwd=FRONTEND)
+    run([*UV, "python", "-c", "from backend.api import app; print('backend imports clean')"])
+
+
+def cmd_clean(args: argparse.Namespace) -> None:
+    """Remove build output and Python caches."""
+    for path in (DIST, ROOT / PAGES):
+        if path.exists():
+            shutil.rmtree(path)
+            print(f"removed {path.relative_to(ROOT)}")
+    for cache in BACKEND.rglob("__pycache__"):
+        shutil.rmtree(cache, ignore_errors=True)
+
+
+def cmd_wipe(args: argparse.Namespace) -> None:
+    """Also remove installed dependencies."""
+    cmd_clean(args)
+    for path in (FRONTEND / "node_modules", BACKEND / ".venv"):
+        if path.exists():
+            shutil.rmtree(path)
+            print(f"removed {path.relative_to(ROOT)}")
+
+
+def maintenance(module: str):
+    """Wrap a backend maintenance module, passing its own flags straight through."""
+    def command(args: argparse.Namespace) -> None:
+        run([*UV, "python", "-m", f"backend.{module}", *args.rest])
+    return command
+
+
+# --- argument parsing -------------------------------------------------------
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="./breadcrumbs",
+        description="Build and run Breadcrumbs, a local literature study tool.",
+        epilog=(
+            f"Library:  {os.environ.get('BREADCRUMBS_HOME', '~/Breadcrumbs')}\n"
+            "Override: HOST, PORT and PAGES are read from the environment,\n"
+            "          or pass --host and --port where a command takes them."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subs = parser.add_subparsers(dest="command", metavar="<command>", required=True)
+
+    def add(name: str, fn, help_text: str, *, serves: bool = False):
+        sub = subs.add_parser(name, help=help_text, description=fn.__doc__)
+        if serves:
+            sub.add_argument("--host", default=HOST)
+            sub.add_argument("--port", default=PORT)
+        sub.set_defaults(fn=fn)
+        return sub
+
+    add("install", cmd_install, "install backend and frontend dependencies")
+    add("dev", cmd_dev, "backend and Vite together, with reload", serves=True)
+    add("dev-backend", cmd_dev_backend, "backend only, with reload", serves=True)
+    add("dev-frontend", cmd_dev_frontend, "Vite dev server only")
+    add("run", cmd_run, "build, then serve everything from the backend", serves=True)
+    add("serve", cmd_serve, "serve the existing build, no rebuild", serves=True)
+
+    build = add("build", cmd_build, "build the frontend bundle if it is stale")
+    build.add_argument("--force", action="store_true", help="rebuild even if unchanged")
+
+    pages = add("pages", cmd_pages, "build a read-only copy for static hosting")
+    pages.add_argument("--out", default=str(PAGES), help=f"output directory (default: {PAGES})")
+    pages.add_argument(
+        "--with-works",
+        action="store_true",
+        help="also fetch each author's wider output from OpenAlex (slow, needs a network)",
+    )
+
+    for name, module, help_text in (
+        ("backfill", "backfill", "re-fetch every paper's full reference list, then relink"),
+        ("redate", "redate", "fix years taken from a reprint or digitised deposit"),
+        ("dedupe-authors", "dedupe_authors", "merge author rows that are the same person"),
+    ):
+        sub = subs.add_parser(name, help=help_text)
+        sub.add_argument("rest", nargs=argparse.REMAINDER, help="passed to the module (--dry-run …)")
+        sub.set_defaults(fn=maintenance(module))
+
+    add("check", cmd_check, "typecheck the frontend and import the backend")
+    add("clean", cmd_clean, "remove build output and Python caches")
+    add("wipe", cmd_wipe, "also remove installed dependencies")
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    try:
+        args.fn(args)
+    except Failed as exc:
+        if isinstance(exc.code, str):
+            print(exc.code, file=sys.stderr)
+            raise SystemExit(1) from None
+        raise
+    except KeyboardInterrupt:
+        raise SystemExit(130) from None
+
+
+if __name__ == "__main__":
+    main()

@@ -1,89 +1,185 @@
 # Breadcrumbs
 
-A local literature study tool. Papers are added deliberately, one at a time, and
-the graph between them fills in as the library grows.
+A local tool for studying a body of literature. It keeps papers, their
+references, your notes and highlights in a SQLite database on your machine, and
+lays the library out on a time grid so you can see how the work developed.
+
+Papers are added one at a time, by you. Adding one records the identifiers of
+everything it cites but creates no other papers; when you later add one of
+those, the link appears on its own.
 
 ![The grid, with one paper pinned and its references drawn across the columns](docs/grid.png)
 
-## What makes it different
+## Status
 
-Existing tools derive one relation automatically — citation or embedding
-similarity — and draw a single graph from it. Breadcrumbs stores *typed* links
-with your own note about why each one exists, and lays papers out in time so
-development is legible rather than tangled.
+Built for my own use, and still changing often. The schema, the commands and the
+layout all move without notice, and migrations are written for my library rather
+than for anyone else's. Treat it as something to read and take ideas from rather
+than something to depend on.
 
-Nothing is auto-imported. Adding a paper records the identifiers of everything
-it cites — the whole bibliography, uncapped — but creates no other paper rows.
-When you later add one of those papers yourself, the link appears on its own.
+If you do run it, keep a copy of `library.db` before pulling.
 
-Only that one direction is fetched. "Who cites this" is unbounded — tens of
-thousands of papers for well-known work — so storing it means storing an
-arbitrary slice, which answers nothing. A bibliography, by contrast, is finite
-and printed in the paper itself, so it can be had in full. Nothing is lost
-inside your library: when you hold both papers, the citing one's own reference
-list is the edge, and the graph draws it from both sides. The paper view still
-has a "Cited by" tab; it lists the papers you hold that cite this one.
-
-## Running it
+## Install and run
 
 ```bash
-make install    # dependencies, both halves
-make run        # the whole app on http://127.0.0.1:8000, one process
+./breadcrumbs install    # dependencies, both halves
+./breadcrumbs run        # http://127.0.0.1:8000
 ```
 
-`make run` builds the frontend and lets the backend serve it, so nothing else
-has to be running — no Node, no second terminal. Node is still needed to
-*produce* the bundle, not to serve it.
+`run` builds the frontend and serves it from the backend, so only one process
+runs. For development, `dev` runs the backend and Vite with hot reload on both;
+open http://localhost:5173.
 
-For development, `make dev` runs the backend and Vite together with hot reload
-on both, and you open http://localhost:5173 instead. `make help` lists the rest;
-`HOST` and `PORT` override the defaults (`make run PORT=9000`).
+`./breadcrumbs --help` lists every command, and each takes `--help` of its own.
+Commands that serve take `--host` and `--port`; `HOST`, `PORT` and `PAGES` are
+read from the environment too.
 
-Then open Settings and fill in two things:
+Your library lives in `~/Breadcrumbs`, or wherever `BREADCRUMBS_HOME` points:
+`library.db` plus `pdfs/` and `authors/`. Notes and highlights are rows in the
+database, not files.
 
-- **A contact email.** It goes to OpenAlex, Crossref and Unpaywall, raises your
-  rate limits, and is required by Unpaywall.
-- **An OpenAlex API key.** Free, from [openalex.org/pricing](https://openalex.org/pricing).
-  OpenAlex now meters requests against a daily budget, and without a key you
-  share one small anonymous allowance with everything else on your address —
-  about a hundred requests before adding papers fails until midnight UTC. A key
-  gets its own $1/day, which is 10,000 credits: reading a single record is free,
-  a filtered list costs 1, a title search costs 10. Importing 130 papers cost
-  about 900.
+## Settings
 
-A Semantic Scholar key is optional and most people will not have one, since it
-needs an institutional address and an application. The app runs without it:
-Semantic Scholar gets a short retry budget, is skipped the moment it throttles,
-and OpenAlex supplies the references instead. What you lose is the sentence
-quoting each citation and its intent label.
+Two things are worth filling in before adding papers:
 
-Your library lives in `~/Breadcrumbs` (`BREADCRUMBS_HOME` overrides it):
-`library.db` plus `pdfs/` and `authors/` as plain files. Notes and highlights are
-rows in the database, not files — a highlight stores its rectangles as fractions
-of the page, so it survives re-downloading the PDF at any zoom.
+- **Contact email.** Sent to OpenAlex, Crossref and Unpaywall. Raises rate
+  limits and is required by Unpaywall.
+- **OpenAlex API key.** Free, from [openalex.org/pricing](https://openalex.org/pricing).
+  Without one you share a small anonymous daily allowance, roughly a hundred
+  requests. A key gets $1/day: a single record is free, a filtered list costs 1,
+  a title search 10. Importing 130 papers cost about 900.
+
+Optional:
+
+- **Semantic Scholar key.** Needs an institutional application. Without it S2
+  is skipped when it throttles and OpenAlex supplies references instead.
+- **Institution proxy.** An EZproxy/OpenAthens prefix, used to build publisher
+  links that go through your subscription.
+- **AI keys.** A provider (OpenRouter, Gemini or DeepSeek) and a search
+  provider (Brave or Tavily) for the assistant.
+
+## The grid
+
+Every paper on one screen, in fixed columns of N years. A card's column depends
+on its year alone, so nothing moves when a panel opens or a paper is selected.
+
+- `− 5 years +` sets the interval, 1 to 50.
+- Empty intervals keep their column, so width measures elapsed time.
+- Newest at the top within a column.
+- Scroll to zoom, drag to pan, middle-click a card to open it in its own tab.
+
+Hovering or pinning a paper draws its links: orange for references, violet for
+papers that cite it. Nothing is drawn at rest.
+
+## Panels
+
+**Left.** Papers or authors, filterable, sortable by year, title or citation
+count. Below it, a map of author affiliations for whatever is in focus.
+
+**Right.** The selected paper: status, authors, DOI, abstract, your note, its
+marked passages, and two tabs. The first is the full reference list, with a
+filter for the ones you do not hold; the second is the papers in your library
+that cite it. Papers you do
+not have can be previewed in place without saving anything.
+
+Papers and authors can be starred.
+
+## Adding papers
+
+Paste a DOI, arXiv id, OpenAlex id or S2 hash, or search by title. Every lookup
+queries all sources at once and streams results, showing a panel per source with
+a Retry button for any that fail. Nothing is saved until you press save.
+
+The same work is often indexed several times under different years: a journal
+article, a book chapter, a later reissue. The Add screen lists every record it
+finds and flags when an earlier one exists, so you can pick before saving.
+
+| Source | Supplies | Key |
+|---|---|---|
+| OpenAlex | identity, authors, institutions, topics, references | free key, advised |
+| Crossref | publisher metadata, licence, title search | none |
+| Semantic Scholar | search suggestions, influential-citation count, fallback | rarely needed |
+| Unpaywall | open-access PDF links | email required |
+| arXiv | preprint PDFs, title search | none |
+
+Only references are fetched, not citing papers. A bibliography is finite and can
+be had in full; "who cites this" runs to tens of thousands for well-known work,
+so any cap on it stores an arbitrary slice. Within your library nothing is lost:
+if you hold both papers, the citing one's bibliography carries the edge, and the
+graph draws it from both sides.
+
+## PDFs
+
+Open-access PDFs download automatically, trying every legal location rather than
+only the one Unpaywall ranks first. arXiv is searched by title as well, since a
+paper behind a paywall often has the author's manuscript there.
+
+For paywalled work you get the publisher page, a PubMed record where one exists,
+and the publisher page through your institutional proxy if you set one.
+**Add PDF** attaches a file you already have.
+
+There is no pirated-source integration.
+
+## Reading
+
+![The reader: the assistant marking passages, with its reasoning beside them](docs/reader.png)
+
+The reader opens in its own tab: PDF on the left, notes and the assistant on the
+right.
+
+- Select text to highlight it, attach a note, or send it to the assistant.
+- **Box** in the toolbar draws a rectangle instead, for scanned PDFs with no
+  text layer. It is offered automatically when a page has no text.
+- Hovering a highlight shows its note.
+- Notes render as Markdown with LaTeX; double-click to edit the source.
+
+Highlights are stored as fractions of the page with the page size alongside, so
+they survive re-downloading the PDF and render at any zoom.
+
+## Authors
+
+Each author has a biography, portrait, affiliations, their papers in your
+library, and their wider output from OpenAlex. Identity is checked through
+Wikidata rather than name matching, and lookups are cached including misses.
+
+OpenAlex splits prolific authors across several records, so `dedupe_authors`
+merges them; a merged author keeps every id it answered to, and papers arriving
+under an old id resolve to it rather than recreating the duplicate.
+
+## The assistant
+
+One assistant with every capability as a tool. It reads your papers, authors,
+links and notes, searches the web, reads the open PDF, and writes notes,
+highlights, links, reading statuses and author homepages. It cannot add papers.
+It proposes one and you decide.
+
+Tool calls stream into the conversation as they happen, so a wrong action can be
+caught while it runs. SQL access is read-only through a separate connection, not
+a pattern check.
+
+Configure under Settings → AI. For OpenRouter you can pin the upstream provider;
+endpoints are listed cheapest-first and pinning turns fallbacks off.
 
 ## Publishing a read-only copy
 
-`make pages` freezes the library into a directory of static files — no backend,
-no database, no Node — that any static host will serve, GitHub Pages included.
+`./breadcrumbs pages` freezes the library into `./site`, four JSON files and a
+reader built against them, with no backend or database. Any static host will
+serve it.
 
 ```bash
-make pages                          # builds ./site
-python3 -m http.server -d site 8080 # look at it
+./breadcrumbs pages
+python3 -m http.server -d site 8080
 ```
 
-It is the same reader, with everything that writes removed: no adding papers,
-no settings, no assistant, no editing. Papers, authors, references, the links
-between them and your notes are all there to read.
+Everything that writes is removed: no adding, no settings, no assistant, no
+editing. Papers, authors, references, links and your notes are all readable.
 
-Two things are deliberately left out. **PDFs**, because a paywalled article is
-the publisher's to distribute and not yours — what you may share is the record
-and your own writing about it. And **settings and conversations**, because that
-table holds your API keys. Only the routes listed in `export_static.ROUTES` are
-written, so nothing is published by having been forgotten.
+Left out on purpose: **PDFs**, which belong to their publishers, and **settings
+and conversations**, which hold your API keys. Only the routes in
+`export_static.ROUTES` are written. The export makes no network requests.
 
-Edit `pages.json` before you publish — it sets the repository link and the
-wording of the "what is this?" panel in the corner:
+Edit `pages.json` first. It sets the repository link and the wording of the
+"what is this?" panel:
 
 ```json
 {
@@ -94,186 +190,29 @@ wording of the "what is this?" panel in the corner:
 }
 ```
 
-It is read at export time and shipped as data, so changing the blurb means
-editing that file and re-running `make pages`, not rebuilding anything. Blank
-fields fall back to sensible defaults.
+It ships as data, so changing it means re-running `pages`, not rebuilding.
 
-An author's wider output is skipped by default: listing it means two live
-OpenAlex requests per author, which is several minutes for a few hundred of
-them and is OpenAlex's data about the world rather than anything of yours. Pass
-`--with-works` to `backend.export_static` if you want it.
+An author's wider output is skipped, since listing it costs two live OpenAlex
+requests per author. Pass `--with-works` for it.
 
-While `make dev` is running the published copy is served at
-http://localhost:5173/readonly/ as well, so you can check what a visitor would
-see — including everything missing from it — before pushing anything.
+While `dev` runs, the published copy is also served at
+http://localhost:5173/readonly/.
 
-## The grid
+## Maintenance
 
-Every paper on one screen, in fixed columns of N years. A card's column is
-decided by its year alone — not by the viewport, the column count, or how many
-papers precede it — so nothing moves when a panel opens or a paper is selected.
+All of these take `--dry-run`.
 
-That constraint is the whole design. A card has a minimum readable width, so
-once a library spans more years than the canvas has card-widths, a proportional
-time axis draws neighbouring years on top of each other and no amount of zooming
-escapes it. Binning gives up resolution instead of position.
+| Command | Does |
+|---|---|
+| `./breadcrumbs backfill` | Re-fetches every paper's full reference list, then relinks. |
+| `./breadcrumbs redate` | Fixes years taken from a reprint or digitised deposit, using the earliest a source reports. |
+| `./breadcrumbs dedupe-authors` | Merges author rows that are the same person. |
 
-- **`− 5 years +`** sets the interval, from 1 to 50. Wider bins mean fewer,
-  larger cards.
-- **Empty intervals keep their column**, so width measures elapsed time and a
-  long silence reads as a gap. A 1840–2022 library at five-year bins is 37
-  columns, 21 of them empty, their labels dimmed.
-- **Newest at the top** within a column.
-- **Scroll to zoom**, anchored under the cursor. Drag anywhere to pan.
-- Cards hold a **16:9 shape** at every zoom and interval, and the type is sized
-  to the card — both dimensions constrain it, and the title is clamped to lines
-  that actually fit rather than overflowing hidden.
+`redate` and `backfill` depend on sources that rate-limit; re-run until they
+report nothing left unverified.
 
-Hovering or pinning a paper draws its links, in two colours: **orange for
-references** (work this paper drew on) and **violet for cited by** (work that
-came back to it). Nothing is drawn at rest — at this density the whole graph is
-noise.
-
-Middle-click any card, on the grid or in the list, to open it in its own tab.
-
-## The panels
-
-**Left** — papers or authors, filterable, sortable by year, title or citation
-count. Click a column to sort; click again to reverse. Numbers open on the
-largest, names on A. Below it, a map of the author affiliations for whatever is
-in focus.
-
-**Right** — the selected paper: status, authors with affiliations, a DOI you
-click to copy, its note and highlights, and two tabs: its full reference list,
-with a filter for the ones you do not hold, and the papers in your library that
-cite it. Papers you do not have can be previewed in place — the same lookup the
-Add page runs, shown as a card, saving nothing.
-
-Papers and authors both take a **star**, in the panel and in the list rows.
-
-## Adding papers
-
-Paste a DOI, arXiv id, OpenAlex id or S2 hash, or search by title with
-autocomplete. Every lookup queries all sources concurrently and streams results
-over server-sent events, so the Add screen shows a panel per source and fills
-each one the moment it answers. Panels report failures rather than hiding them,
-and each has a Retry button that re-queries only that source. Nothing is saved
-until you press save.
-
-### Where the data comes from
-
-| Source | Supplies | Key |
-|---|---|---|
-| OpenAlex | identity, authors, institutions, topics, references | free key, strongly advised |
-| Crossref | publisher metadata, licence, title search | none |
-| Semantic Scholar | search suggestions, influential-citation count, fallback | rarely needed |
-| Unpaywall | legal open-access PDF links | email required |
-| arXiv | preprint PDFs, title search for author manuscripts | none |
-
-OpenAlex is the spine. Semantic Scholar has a narrow role, powering the search
-suggestions, because its autocomplete is fast and tolerates bursts where
-OpenAlex's does not.
-
-Semantic Scholar's citation contexts and intent labels are deliberately not
-imported. Typing a link is a judgement you make, so every automatic link is a
-plain citation until you say otherwise.
-
-Titles arrive with the publisher's typesetting still attached — IEEE sends
-LaTeX, Crossref sends XML fragments — and it is stripped, since a title is a
-label and nothing draws it typeset. Abstracts keep their mathematics and render
-it with KaTeX, because there the notation is the content.
-
-### Duplicate records
-
-The same work is often indexed several times. Kohonen's self-organising map
-paper is a 1982 journal article, a 1988 book chapter, and a reissue other
-sources date to 2004. Placing it at the wrong year would misrepresent when the
-idea appeared, so the Add screen lists every record it finds for a title, marks
-when an earlier one exists, and lets you switch before saving.
-
-## Full text
-
-Open-access PDFs download automatically, and every legal location is tried — not
-just the one Unpaywall ranks best, since that is often a landing page serving
-HTML while a repository copy further down the list serves the file. arXiv is
-searched by title too, because a paper whose DOI points at a paywalled journal
-frequently has the author's own manuscript there under no identifier the record
-carries.
-
-For paywalled work the tool offers the publisher page, a PubMed record where one
-exists, and — if you set a proxy prefix in Settings — the publisher page through
-your own institutional subscription. **Add PDF** attaches a file you already
-have. Cards and the detail panel show a **PDF badge** when one is stored.
-
-There is no pirated-source integration and there will not be one.
-
-## Reading
-
-![The reader: the assistant marking passages, with its reasoning beside them](docs/reader.png)
-
-The reader opens in its own tab: PDF on the left, a resizable panel on the right
-holding notes and the assistant. Select text to highlight it, attach a note to
-the passage, or send it to the assistant as context. Highlights are stored as
-page fractions with the page size alongside, so they render correctly at any
-zoom and can be exported back to absolute units.
-
-## Authors
-
-Each author has a panel: a biography and portrait, their affiliations, their
-papers in your library, and their full output from OpenAlex with citation counts.
-
-Identity is resolved through Wikidata, not by guessing. A Wikipedia search for
-"David Field" returns a baseball park whose name matches perfectly; the page's
-Wikidata item says it is a sports venue rather than a human, so it is rejected.
-Biographies are cached, misses included, because most researchers have no page
-and the failing search would otherwise repeat forever.
-
-## The assistant
-
-One assistant, holding every capability as a tool rather than a set of
-configured tasks. It reads your papers, authors, links and notes; searches the
-web and fetches pages; reads the PDF you have open; and writes notes,
-highlights, links, reading statuses and author homepages.
-
-It cannot add papers. That is the point of the tool, so `propose_paper` opens
-the preview card and you decide. It never blocks waiting for you — it proposes
-and carries on.
-
-Tool calls stream into the conversation as they happen. That is not decoration:
-the assistant writes to your database, and watching which tool it reached for is
-how a wrong action gets caught while it is happening.
-
-**Skills** keep the prompt small. Only a name and one line per skill sit in the
-system prompt; the assistant calls `read_skill` when it decides one applies. The
-SQL skill is 3.7 KB of guidance plus the whole schema, which would otherwise
-ride on every message. Skills are Markdown files under `ai/skills/`, editable without
-touching code, and the schema is injected live so it can never describe a stale
-one.
-
-SQL is read-only, through a separate read-only connection rather than a pattern
-check alone. `WITH x AS (SELECT 1) DELETE FROM papers` passes any reasonable
-regex; the database itself refuses it.
-
-There is no agent framework. The loop is hand-written and about 150 lines —
-send messages plus tool schemas, run what comes back, append results, repeat —
-and everything that decides quality lives in the tool descriptions and the
-system prompt.
-
-Configure it under Settings → AI: a provider key (OpenRouter, Gemini or
-DeepSeek), a search key (Brave or Tavily), and a model. The model picker is a
-combobox you type into, matching tokens independently so `gpt 4o` and `4o gpt`
-both find `openai/gpt-4o` — OpenRouter alone lists hundreds. Models without tool
-support are filtered out where the provider says so.
-
-For OpenRouter you can also **pin the upstream provider**. The same model is
-served by Anthropic, Google, Azure and Bedrock at different prices and context
-limits, so the endpoints are listed cheapest-first with both token prices, and
-pinning one turns fallbacks off — a turn fails rather than being served
-somewhere else without telling you.
-
-Web search is a separate service rather than a provider's own, because search
-availability differs sharply between providers and binding tasks to it would
-make most model choices unusable.
+`./breadcrumbs check` typechecks the frontend and imports the backend.
+`clean` removes build output, `wipe` also removes installed dependencies.
 
 ## Layout
 
@@ -281,15 +220,15 @@ make most model choices unusable.
 backend/src/backend/
   schema.sql    tables, indexes, seeded link types and shelves
   db.py         connections, settings, migrations
-  ids.py        identifier normalisation, the basis of all link matching
+  ids.py        identifier normalisation, the basis of link matching
   sources/      one adapter per API, plus a rate-limited HTTP client
-  store.py      upserts and link resolution
+  store.py      upserts, link resolution, author merging, deletion
   ingest.py     fetch, merge, preview, save
   pdftext.py    page text, outline, quote to rectangles
   ai/           agent loop, tools, skills
   api.py        HTTP routes
 frontend/src/
-  api.ts                    typed client
+  api.ts                    typed client, and the static-export reader
   components/Timeline       the binned grid
   components/timelineLayout binning, card sizing, type metrics
   components/AddPaper       search, per-source preview, then save

@@ -225,9 +225,9 @@ def export(out_dir: Path, with_works: bool = False) -> None:
 
     if refused:
         hosts = sorted({r.split(":", 1)[0] for r in refused})
-        print(f"  {len(refused)} request(s) not made ({', '.join(hosts)}) — stored data used")
+        print(f"  {len(refused)} request(s) not made ({', '.join(hosts)}); stored data used")
     if "YOUR-USERNAME" in config["repo_url"]:
-        print("  ! pages.json still has the placeholder repo_url — set it before publishing")
+        print("  ! pages.json still has the placeholder repo_url; set it before publishing")
     print(f"  4 files, {total / 1024:.0f} KB")
 
 

@@ -5,7 +5,7 @@ const BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 /**
  * Read a frozen copy of the library instead of talking to a backend.
  *
- * Set at build time by `make pages`, which exports every GET response this
+ * Set at build time by `./breadcrumbs pages`, which exports every GET response this
  * client makes into a tree of JSON files. There is no server behind the
  * published site, so anything that would change the library is refused here
  * rather than failing later with a network error nobody can act on.

@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // The published read-only copy, built by `make pages` and served by the
+      // The published read-only copy, built by `./breadcrumbs pages` and served by the
       // backend. Proxied so it sits at /readonly on the dev server too, rather
       // than only on the backend's own port: checking it should not mean
       // switching origins halfway through a session.

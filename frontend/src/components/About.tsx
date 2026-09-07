@@ -20,7 +20,7 @@ const FALLBACK: SiteConfig = {
  * repository for anyone who wants their own.
  *
  * The wording comes from pages.json by way of the export, not from here, so
- * changing it is editing a config file and re-running `make pages` rather than
+ * changing it is editing a config file and re-running `./breadcrumbs pages` rather than
  * editing a component.
  */
 export default function About() {

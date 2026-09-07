@@ -1659,7 +1659,7 @@ def stats(conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, Any]:
 # Mounted last, so every /api route above is matched first — a mount at "/"
 # otherwise swallows the lot. Optional by design: in development Vite serves
 # the UI on its own port with hot reload, and this directory does not exist
-# until `make build`. With it, the backend alone serves the whole app.
+# until `./breadcrumbs build`. With it, the backend alone serves the whole app.
 def _frontend_dist() -> Path:
     override = os.environ.get("BREADCRUMBS_STATIC")
     if override:
@@ -1668,7 +1668,7 @@ def _frontend_dist() -> Path:
 
 
 def _pages_site() -> Path:
-    """Where `make pages` puts the published copy."""
+    """Where `./breadcrumbs pages` puts the published copy."""
     override = os.environ.get("BREADCRUMBS_PAGES")
     if override:
         return Path(override).expanduser()

@@ -1,5 +1,5 @@
 {
-  "_comment": "Settings for the published read-only copy (make pages). Nothing here is secret, and none of it affects the app you run locally.",
+  "_comment": "Settings for the published read-only copy (./breadcrumbs pages). Nothing here is secret, and none of it affects the app you run locally.",
 
   "repo_url": "https://github.com/zerobitfulladder/Breadcrumbs",
   "owner": "",
