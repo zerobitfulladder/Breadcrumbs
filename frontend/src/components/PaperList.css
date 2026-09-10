@@ -33,13 +33,13 @@
 .pl-controls input {
   width: 100%; font: inherit; font-size: 12px; padding: 5px 8px;
   background: var(--surface-2); color: var(--text);
-  border: 1px solid var(--border); border-radius: 5px;
+  border: 1px solid var(--border);
 }
 .pl-controls input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 .pl-sorts { display: flex; gap: 3px; margin-top: 6px; }
 .pl-sorts button {
   flex: 1; font: inherit; font-size: 10.5px; padding: 3px 0; cursor: pointer;
-  text-transform: capitalize; border-radius: 4px;
+  text-transform: capitalize;
   background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
 }
 .pl-sorts button.is-active {
@@ -56,7 +56,7 @@
 
 .pl-item {
   width: 100%; display: flex; gap: 8px; text-align: left; cursor: pointer;
-  font: inherit; padding: 6px 8px; border-radius: 5px;
+  font: inherit; padding: 6px 8px;
   background: none; color: var(--text); border: 1px solid transparent;
   transition: background 110ms ease, border-color 110ms ease;
 }
@@ -66,7 +66,7 @@
 .pl-item.is-pinned .pl-item-year::after {
   content: "";
   display: inline-block; width: 4px; height: 4px; margin-left: 4px;
-  border-radius: 50%; background: var(--accent); vertical-align: middle;
+  background: var(--accent); vertical-align: middle;
 }
 
 .pl-item-year {
@@ -86,7 +86,7 @@
 .pl-modes { display: flex; gap: 2px; }
 .pl-modes button {
   font: inherit; font-size: 11.5px; padding: 3px 9px; cursor: pointer;
-  border-radius: 4px; background: none; color: var(--text-dim);
+  background: none; color: var(--text-dim);
   border: 1px solid transparent;
 }
 .pl-modes button:hover { color: var(--text); background: var(--surface-2); }

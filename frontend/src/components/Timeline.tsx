@@ -61,14 +61,6 @@ function loadView(): SavedView | null {
   }
 }
 
-const KIND_CLASS: Record<string, string> = {
-  topic: "kind-topic",
-  supplement: "kind-supplement",
-  dataset: "kind-dataset",
-  background: "kind-background",
-  method: "kind-method",
-};
-
 export default function Timeline({
   papers,
   links = [],
@@ -462,11 +454,11 @@ export default function Timeline({
                 type="button"
                 className={[
                   "tl-box",
-                  KIND_CLASS[paper.kind ?? ""] ?? "kind-topic",
                   isActive ? "is-active" : "",
                   isLinked ? "is-linked" : "",
                   dimmed ? "is-dimmed" : "",
                   paper.id === selectedId ? "is-pinned" : "",
+                  paper.favorite ? "is-fav" : "",
                   `status-${paper.status ?? "unread"}`,
                 ]
                   .filter(Boolean)
@@ -493,8 +485,21 @@ export default function Timeline({
                   onOpenReader?.(paper.id);
                 }}
                 onMouseDown={(e) => e.button === 1 && e.preventDefault()}
-                title={`${paper.title}\n${paper.authors.join(", ")}\n${paper.venue ?? ""} ${paper.year}\n${statusLabel(paper.status)}${paper.has_pdf ? " · PDF stored" : ""}`}
+                title={`${paper.title}\n${paper.authors.join(", ")}\n${paper.venue ?? ""} ${paper.year}\n${statusLabel(paper.status)}${paper.has_pdf ? " · PDF stored" : ""}${paper.favorite ? " · favourite" : ""}`}
               >
+                {/* Starred elsewhere in the app; here it is a marker only,
+                    since a card this small has no room for a hit target that
+                    would not be caught by the pan the whole canvas listens
+                    for. Sat on the top-left corner rather than in the text: at
+                    this size a badge on the corner is what the eye picks out of
+                    a grid, and the corner is free — the pin marker has the
+                    other one. `is-fav` indents the first line of the title out
+                    from under it. */}
+                {!!paper.favorite && (
+                  <span className="tl-fav" title="Favourite">
+                    ★
+                  </span>
+                )}
                 <span className="tl-box-title">{paper.title}</span>
                 <span className="tl-box-meta">
                   {/* The year is its own element so it can never be the part

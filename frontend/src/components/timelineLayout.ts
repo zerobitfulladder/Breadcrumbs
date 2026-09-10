@@ -211,9 +211,15 @@ const clamp = (lo: number, v: number, hi: number) => Math.max(lo, Math.min(hi, v
  */
 export function cardText(w: number, h: number): CardText {
   const PAD_V = 8;
-  const metaFont = clamp(4.5, Math.min(h * 0.14, w * 0.07), 8);
+  // The upper bounds exist so a lone paper in a wide column does not get
+  // poster-sized type, not to hold the text at a reading size — set near the
+  // old defaults they capped out the moment a card grew, which is what made a
+  // zoomed-in card read as a big box with small print in it. They now sit far
+  // enough out that the proportional rule, not the cap, is what is in force
+  // across the whole usable zoom range.
+  const metaFont = clamp(4.5, Math.min(h * 0.14, w * 0.07), 15);
   const metaH = metaFont * 1.5;
-  const titleFont = clamp(5, Math.min(h * 0.17, w * 0.085), 10);
+  const titleFont = clamp(5, Math.min(h * 0.17, w * 0.085), 24);
   const room = h - PAD_V - metaH;
   return {
     titleFont: Math.round(titleFont * 10) / 10,

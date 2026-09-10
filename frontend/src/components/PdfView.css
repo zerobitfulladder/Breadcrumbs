@@ -7,7 +7,7 @@
 }
 .pv-toolbar button {
   font: inherit; font-size: 13px; line-height: 1; padding: 3px 9px; cursor: pointer;
-  border-radius: 4px; background: var(--surface-2); color: var(--text);
+  background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border);
 }
 .pv-toolbar button:hover { border-color: var(--accent); }
@@ -52,7 +52,6 @@
    the way a marker pen does, so the text stays as crisp as it was. */
 .pv-mark {
   position: absolute; padding: 0; border: none; cursor: pointer;
-  border-radius: 1px;
   mix-blend-mode: multiply;
   transition: filter 110ms ease;
   pointer-events: auto;
@@ -67,7 +66,7 @@
    is what a highlight would look like. */
 .pv-sel {
   position: absolute; pointer-events: none;
-  background: #93c5fd; border-radius: 1px;
+  background: #93c5fd;
   mix-blend-mode: multiply;
 }
 
@@ -78,7 +77,7 @@
    permanently, so it should not linger like a highlight. */
 .pv-reveal {
   position: absolute; pointer-events: none;
-  background: #f9a8d4; border-radius: 1px;
+  background: #f9a8d4;
   mix-blend-mode: multiply;
   animation: pv-flash 2.6s ease-out forwards;
 }
@@ -96,7 +95,7 @@
    as a text highlight's, so the mark that results is indistinguishable. */
 .pv-region {
   border: 1px solid var(--border); background: none; color: var(--text-dim);
-  border-radius: 5px; padding: 2px 8px; font-size: 12px; cursor: pointer;
+  padding: 2px 8px; font-size: 12px; cursor: pointer;
 }
 .pv-region.is-on {
   background: var(--accent); border-color: var(--accent); color: #fff;
@@ -112,7 +111,6 @@
   position: absolute; pointer-events: none;
   border: 1.5px dashed var(--accent);
   background: rgb(125 125 125 / 0.12);
-  border-radius: 2px;
 }
 
 /* A highlight's note, shown while the pointer rests on it.
@@ -124,7 +122,6 @@
   z-index: 40;
   max-width: 320px;
   padding: 7px 10px;
-  border-radius: 7px;
   border: 1px solid var(--border);
   background: var(--surface-3);
   color: var(--text);

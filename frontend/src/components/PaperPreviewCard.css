@@ -19,7 +19,6 @@
   max-height: 88vh;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 9px;
   box-shadow: 0 22px 60px rgb(0 0 0 / 0.5);
   overflow: hidden;
 }
@@ -45,7 +44,6 @@
   font-size: 11.5px;
   padding: 4px 12px;
   cursor: pointer;
-  border-radius: 5px;
   background: var(--surface-3);
   color: var(--text);
   border: 1px solid var(--border-strong);
@@ -62,6 +60,6 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ppc-saved {
-  font-size: 11.5px; padding: 5px 12px; border-radius: 5px;
+  font-size: 11.5px; padding: 5px 12px;
   background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok);
 }

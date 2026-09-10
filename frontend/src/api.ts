@@ -14,9 +14,22 @@ export const STATIC_MODE = import.meta.env.VITE_STATIC === "1";
 /** Where those files live, relative to the page. */
 const STATIC_BASE = import.meta.env.VITE_STATIC_BASE ?? "./data";
 
+/**
+ * The build this page was published by, stamped onto every data URL.
+ *
+ * The scripts and styles are content-hashed, so a new build fetches new files
+ * and a browser holding the old ones is not asked for them. The export is not:
+ * it is always `data/library.json`, so a returning visitor was served whatever
+ * that URL gave them last time — new code reading a stale library, which shows
+ * up as a published copy still claiming the statuses and stars of the build
+ * before. The stamp changes with the build, so the URL does too.
+ */
+const STATIC_VERSION = import.meta.env.VITE_STATIC_VERSION ?? "";
+
 /** A file in the frozen export, by name. */
 export function staticUrl(name: string): string {
-  return `${STATIC_BASE}/${name}`;
+  const url = `${STATIC_BASE}/${name}`;
+  return STATIC_VERSION ? `${url}?v=${encodeURIComponent(STATIC_VERSION)}` : url;
 }
 
 /** The published copy's own settings, from pages.json at export time. */
@@ -43,7 +56,7 @@ const bundles = new Map<string, Promise<Record<string, unknown>>>();
 function bundle(name: string): Promise<Record<string, unknown>> {
   let pending = bundles.get(name);
   if (!pending) {
-    pending = fetch(`${STATIC_BASE}/${name}.json`).then((r) => {
+    pending = fetch(staticUrl(`${name}.json`)).then((r) => {
       if (!r.ok) throw new ApiError(`Missing ${name} in this copy of the library`, r.status);
       return r.json() as Promise<Record<string, unknown>>;
     });

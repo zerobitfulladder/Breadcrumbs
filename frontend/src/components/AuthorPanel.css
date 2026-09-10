@@ -9,7 +9,7 @@
 .ap-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
 .ap-portrait {
   width: 72px; height: 72px; flex: 0 0 auto;
-  object-fit: cover; border-radius: 7px;
+  object-fit: cover;
   border: 1px solid var(--border); background: var(--surface-2);
 }
 .ap-portrait-none {
@@ -32,7 +32,7 @@
   color: var(--text-dim); margin: 0 0 6px; font-weight: 600;
 }
 .ap-badge {
-  font-size: 10px; padding: 0 6px; border-radius: 999px;
+  font-size: 10px; padding: 0 6px;
   background: var(--surface-3); color: var(--text-dim);
 }
 
@@ -44,7 +44,7 @@
 .ap-links a:hover { text-decoration: underline; }
 .ap-refresh {
   margin-left: auto; font: inherit; font-size: 10.5px; padding: 3px 9px;
-  cursor: pointer; border-radius: 4px;
+  cursor: pointer;
   background: var(--surface-3); color: var(--text-dim);
   border: 1px solid var(--border-strong);
 }
@@ -56,7 +56,7 @@
 .ap-papers { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .ap-papers button {
   width: 100%; display: flex; gap: 8px; text-align: left; cursor: pointer;
-  font: inherit; padding: 6px 8px; border-radius: 5px;
+  font: inherit; padding: 6px 8px;
   background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
 }
 .ap-papers button:hover { border-color: var(--accent); background: var(--surface-3); }
@@ -67,17 +67,17 @@
 .ap-paper-title { font-size: 11.5px; line-height: 1.35; }
 .ap-tag {
   display: inline-block; margin-left: 5px; font-size: 9.5px; padding: 0 5px;
-  border-radius: 999px; background: var(--surface-3); color: var(--text-dim);
+  background: var(--surface-3); color: var(--text-dim);
 }
 
 .ap-source { margin: 0; font-size: 10.5px; color: var(--text-dim); }
 .ap-error {
-  padding: 9px 11px; border-radius: 6px; font-size: 12px;
+  padding: 9px 11px; font-size: 12px;
   background: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger-fg);
 }
 
 .ap-skel {
-  display: block; border-radius: 4px; margin-bottom: 8px;
+  display: block; margin-bottom: 8px;
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%);
   background-size: 400% 100%;
   animation: ap-shimmer 1.4s ease infinite;
@@ -90,7 +90,7 @@
 
 .ap-portrait-button {
   padding: 0; border: none; background: none; cursor: zoom-in;
-  flex: 0 0 auto; line-height: 0; border-radius: 7px;
+  flex: 0 0 auto; line-height: 0;
 }
 .ap-portrait-button:hover .ap-portrait { border-color: var(--accent); }
 .ap-portrait-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -123,7 +123,6 @@
   max-width: 100%;
   max-height: 76vh;
   object-fit: contain;
-  border-radius: 8px;
   background: var(--surface-2);
   box-shadow: 0 18px 50px rgb(0 0 0 / 0.55);
 }
@@ -140,7 +139,7 @@
 
 .ap-load {
   width: 100%; font: inherit; font-size: 11.5px; padding: 6px 0; cursor: pointer;
-  border-radius: 5px; background: var(--surface-2); color: var(--text-dim);
+  background: var(--surface-2); color: var(--text-dim);
   border: 1px dashed var(--border-strong);
 }
 .ap-load:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
@@ -150,7 +149,7 @@
 .ap-works { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; max-height: 340px; overflow-y: auto; }
 .ap-works li {
   display: flex; align-items: flex-start; gap: 7px;
-  padding: 5px 7px; border-radius: 5px; border: 1px solid transparent;
+  padding: 5px 7px; border: 1px solid transparent;
 }
 .ap-works li:hover { background: var(--surface-2); }
 .ap-works li.is-held { border-color: var(--border); background: var(--surface-2); }
@@ -167,7 +166,7 @@
 .ap-work-meta { font-size: 10px; color: var(--text-dim); }
 .ap-work-action {
   flex: 0 0 auto; font: inherit; font-size: 10px; padding: 2px 8px; cursor: pointer;
-  border-radius: 4px; background: var(--surface-3); color: var(--text-dim);
+  background: var(--surface-3); color: var(--text-dim);
   border: 1px solid var(--border-strong);
 }
 .ap-work-action:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
@@ -181,7 +180,7 @@
 .ap-homepage a { font-size: 11.5px; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
 .ap-homepage a:hover { text-decoration: underline; }
 .ap-verified {
-  font-size: 9.5px; padding: 1px 6px; border-radius: 999px;
+  font-size: 9.5px; padding: 1px 6px;
   background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok);
 }
 .ap-found-by { font-size: 9.5px; color: var(--text-dim); }
@@ -199,14 +198,14 @@
 
 .ap-source-tag {
   font-size: 9px; font-weight: 400; text-transform: none; letter-spacing: 0;
-  padding: 0 6px; border-radius: 999px;
+  padding: 0 6px;
   background: var(--surface-3); color: var(--text-dim);
 }
 
 .ap-photo-edit-btn {
   position: absolute; left: 16px; top: 74px;
   font: inherit; font-size: 9.5px; padding: 1px 7px; cursor: pointer;
-  border-radius: 999px; opacity: 0;
+  opacity: 0;
   background: var(--surface-3); color: var(--text-dim);
   border: 1px solid var(--border-strong);
   transition: opacity 110ms ease;
@@ -223,12 +222,12 @@
 .ap-photo-edit input {
   width: 100%; font: inherit; font-size: 11.5px; padding: 5px 8px;
   background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-radius: 5px;
+  border: 1px solid var(--border);
 }
 .ap-photo-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .ap-photo-actions button, .ap-photo-file {
   font: inherit; font-size: 10.5px; padding: 4px 10px; cursor: pointer;
-  border-radius: 5px; background: var(--surface-3); color: var(--text);
+  background: var(--surface-3); color: var(--text);
   border: 1px solid var(--border-strong);
 }
 .ap-photo-actions button:hover, .ap-photo-file:hover { border-color: var(--accent); }

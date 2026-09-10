@@ -9,7 +9,7 @@
 .app-bar nav { display: flex; gap: 3px; }
 .app-bar nav button {
   font: inherit; font-size: 12.5px; padding: 4px 11px; cursor: pointer;
-  background: none; color: var(--text-dim); border: 1px solid transparent; border-radius: 5px;
+  background: none; color: var(--text-dim); border: 1px solid transparent;
 }
 .app-bar nav button:hover { color: var(--text); background: var(--surface-2); }
 .app-bar nav button.is-active {
@@ -45,14 +45,14 @@
 .app-links { padding-left: 0; list-style: none; }
 .app-pdf {
   display: inline-block; margin-top: 14px; padding: 5px 12px; font-size: 12px;
-  background: var(--accent); color: #fff; border-radius: 5px; text-decoration: none;
+  background: var(--accent); color: #fff; text-decoration: none;
 }
 /* Matches the pill on the timeline card, so the same fact reads the same way
    in both places. */
 .app-pdf-badge {
   display: inline-block; margin-left: 7px; vertical-align: 1px;
   font-size: 9px; font-weight: 600; letter-spacing: 0.04em; line-height: 1.6;
-  padding: 0 6px; border-radius: 999px;
+  padding: 0 6px;
   background: var(--ok); color: var(--surface);
 }
 
@@ -63,7 +63,7 @@
 
 .app-attach {
   display: inline-block; margin-top: 14px; margin-left: 7px; padding: 5px 12px;
-  font: inherit; font-size: 12px; cursor: pointer; border-radius: 5px;
+  font: inherit; font-size: 12px; cursor: pointer;
   background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong);
 }
 .app-attach:hover:not(:disabled) { border-color: var(--accent); }
@@ -71,7 +71,7 @@
 .app-attach-error {
   margin: 7px 0 0; font-size: 11.5px; color: var(--danger-fg);
   background: var(--danger-bg); border: 1px solid var(--danger);
-  border-radius: 5px; padding: 6px 9px;
+  padding: 6px 9px;
 }
 
 .app-noid { font-size: 11px; color: var(--text-dim); font-style: italic; }
@@ -84,7 +84,7 @@
 .app-open-reader {
   display: block; width: 100%; margin-top: 12px;
   font: inherit; font-size: 11.5px; padding: 6px 0; cursor: pointer;
-  border-radius: 5px; background: var(--surface-2); color: var(--text);
+  background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border-strong);
 }
 .app-open-reader:hover { border-color: var(--accent); }
@@ -93,12 +93,12 @@
   display: inline-flex; align-items: center; gap: 6px;
   font: inherit; font-size: 11.5px; padding: 3px 10px; cursor: pointer;
   background: none; color: var(--text-dim);
-  border: 1px solid var(--border); border-radius: 999px;
+  border: 1px solid var(--border);
 }
 .app-bread:hover { color: var(--text); border-color: var(--accent); }
 .app-bread kbd {
   font: inherit; font-size: 10px; letter-spacing: 0.06em;
-  padding: 0 4px; border-radius: 3px;
+  padding: 0 4px;
   background: var(--surface-3); color: var(--text);
 }
 
@@ -110,7 +110,7 @@
 .app-status select {
   flex: 1 1 auto; font: inherit; font-size: 12px; padding: 4px 8px;
   background: var(--surface-2); color: var(--text);
-  border: 1px solid var(--border); border-radius: 5px;
+  border: 1px solid var(--border);
 }
 .app-status select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 
@@ -136,13 +136,13 @@
 .app-danger { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border); }
 .app-danger-open {
   background: none; border: 1px solid var(--border); color: var(--text-dim);
-  border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  padding: 6px 10px; font-size: 12px; cursor: pointer;
 }
 .app-danger-open:hover { color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
 .app-danger-note { font-size: 11.5px; color: var(--text-dim); line-height: 1.55; margin: 0 0 9px; }
 .app-danger-row { display: flex; gap: 8px; align-items: center; }
 .app-danger-row button {
-  border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  padding: 6px 10px; font-size: 12px; cursor: pointer;
   border: 1px solid var(--border); background: none; color: var(--text);
 }
 .app-danger-go {
@@ -154,7 +154,7 @@
 /* A note on a published copy: the same words, with nothing to type into. */
 .app-note-ro {
   margin: 10px 0 0; padding: 9px 11px;
-  border: 1px solid var(--border); border-radius: 7px;
+  border: 1px solid var(--border);
   background: var(--surface-2); color: var(--text);
   font-size: 12.5px; line-height: 1.6; white-space: pre-wrap;
 }
@@ -183,14 +183,14 @@
 .app-marks ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
 .app-marks li {
   display: flex; gap: 8px; padding: 7px 9px;
-  border: 1px solid var(--border); border-radius: 7px;
+  border: 1px solid var(--border);
   background: var(--surface-2); font-size: 12px; line-height: 1.5;
 }
 .app-marks li.is-clickable { cursor: pointer; }
 .app-marks li.is-clickable:hover { border-color: var(--accent); }
 .app-mark-page {
   flex: 0 0 auto; align-self: flex-start;
-  padding: 1px 6px; border-radius: 4px;
+  padding: 1px 6px;
   font-size: 10.5px; font-weight: 600; color: #111;
 }
 .app-mark-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }

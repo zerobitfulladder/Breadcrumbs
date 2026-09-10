@@ -4,11 +4,11 @@
 .sb-field input {
   flex: 1 1 auto; min-width: 0; font: inherit; font-size: 14px; padding: 11px 14px;
   background: var(--surface-2); color: var(--text);
-  border: 1px solid var(--border); border-radius: 6px;
+  border: 1px solid var(--border);
 }
 .sb-field input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 .sb-field button {
-  flex: 0 0 auto; font: inherit; padding: 11px 20px; border-radius: 6px; cursor: pointer;
+  flex: 0 0 auto; font: inherit; padding: 11px 20px; cursor: pointer;
   background: var(--accent); color: #fff; border: 1px solid var(--accent);
 }
 .sb-field button:disabled { opacity: 0.5; cursor: default; }
@@ -27,17 +27,17 @@
   margin: 0; padding: 4px; list-style: none;
   max-height: 340px; overflow-y: auto;
   background: var(--surface-2); border: 1px solid var(--border-strong);
-  border-radius: 7px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
 }
 .sb-list li {
-  padding: 7px 9px; border-radius: 5px; cursor: pointer;
+  padding: 7px 9px; cursor: pointer;
   display: flex; flex-direction: column; gap: 2px;
 }
 .sb-list li.is-active { background: var(--accent-bg); }
 .sb-title { font-size: 12.5px; line-height: 1.35; }
 .sb-meta { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
 .sb-badge {
-  font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  font-size: 10px; padding: 1px 6px;
   background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok);
 }
 .sb-foot {

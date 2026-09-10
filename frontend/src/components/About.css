@@ -8,7 +8,6 @@
   z-index: 60;
   width: 34px;
   height: 34px;
-  border-radius: 50%;
   border: 1px solid var(--border-strong);
   background: var(--surface-3);
   color: var(--text-dim);
@@ -26,7 +25,6 @@
   z-index: 60;
   width: min(340px, calc(100vw - 36px));
   padding: 15px 16px 13px;
-  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
@@ -38,7 +36,7 @@
 .ab-panel a { color: var(--accent); }
 .ab-close {
   border: 1px solid var(--border); background: none; color: var(--text-dim);
-  border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+  padding: 4px 10px; font-size: 12px; cursor: pointer;
 }
 .ab-close:hover { color: var(--text); }
 .ab-title { margin: 0 0 8px; font-size: 13.5px; }

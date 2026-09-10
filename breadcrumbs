@@ -161,13 +161,22 @@ def cmd_pages(args: argparse.Namespace) -> None:
         export.append("--with-works")
     run(export)
 
+    # Stamped onto the export's URLs by the client. Vite content-hashes the
+    # scripts and styles, so those are safe to publish over; the data files
+    # keep their names from build to build, and a host that told the browser
+    # to cache them — GitHub Pages says ten minutes — will hand a returning
+    # visitor the last build's library under the new build's code. That reads
+    # as a publish that dropped the statuses and stars set since.
+    stamp = time.strftime("%Y%m%d%H%M%S")
+
     # A relative base so the result works from a project page as happily as
     # from a domain root, and VITE_STATIC to point the client at the export.
     run(
         ["npx", "vite", "build", "--base", "./", "--outDir", str((ROOT / out).resolve()),
          "--emptyOutDir", "false"],
         cwd=FRONTEND,
-        env={"VITE_API_BASE": "", "VITE_STATIC": "1", "VITE_STATIC_BASE": "./data"},
+        env={"VITE_API_BASE": "", "VITE_STATIC": "1", "VITE_STATIC_BASE": "./data",
+             "VITE_STATIC_VERSION": stamp},
     )
 
     (out / ".nojekyll").touch()

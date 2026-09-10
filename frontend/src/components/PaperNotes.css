@@ -11,13 +11,13 @@
   text-transform: none; letter-spacing: 0; opacity: 0.7;
 }
 .pn-badge {
-  font-size: 10px; padding: 0 6px; border-radius: 999px;
+  font-size: 10px; padding: 0 6px;
   background: var(--surface-3); color: var(--text-dim); font-weight: 500;
 }
 
 .pn-note {
   font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere;
-  padding: 7px 9px; border-radius: 6px; cursor: text;
+  padding: 7px 9px; cursor: text;
   background: var(--surface-2); border: 1px solid var(--border);
 }
 .pn-note:hover { border-color: var(--border-strong); }
@@ -27,17 +27,17 @@
   width: 100%; font: inherit; font-size: 12px; line-height: 1.55;
   padding: 7px 9px; resize: none; overflow: hidden;
   background: var(--surface); color: var(--text);
-  border: 1px solid var(--accent); border-radius: 6px;
+  border: 1px solid var(--accent);
 }
 .pn-editor:focus { outline: 2px solid var(--accent-soft); }
 
 .pn-highlights { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
 .pn-highlights li {
-  padding: 7px 9px; border-radius: 6px;
+  padding: 7px 9px;
   background: var(--surface-2); border: 1px solid var(--border);
 }
 .pn-hl-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.pn-swatch { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
+.pn-swatch { width: 9px; height: 9px; flex: 0 0 auto; }
 .pn-page {
   font: inherit; font-size: 10px; padding: 0; cursor: pointer;
   background: none; border: none; color: var(--text-dim);
@@ -45,7 +45,7 @@
 }
 .pn-page:hover { color: var(--accent); text-decoration: underline; }
 .pn-who {
-  font-size: 9px; padding: 0 5px; border-radius: 999px;
+  font-size: 9px; padding: 0 5px;
   background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent);
 }
 .pn-highlights blockquote {
@@ -55,7 +55,7 @@
 }
 .pn-hl-note {
   font-size: 11px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere;
-  padding: 4px 6px; border-radius: 4px; cursor: text;
+  padding: 4px 6px; cursor: text;
   background: var(--surface); border: 1px solid transparent;
 }
 .pn-hl-note:hover { border-color: var(--border); }

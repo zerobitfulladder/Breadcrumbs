@@ -4,7 +4,7 @@
 .rl-tabs { display: flex; align-items: center; gap: 4px; margin-bottom: 7px; }
 .rl-tabs button {
   font: inherit; font-size: 11px; padding: 3px 9px; cursor: pointer;
-  border-radius: 5px; background: var(--surface-2); color: var(--text-dim);
+  background: var(--surface-2); color: var(--text-dim);
   border: 1px solid var(--border);
 }
 .rl-tabs button.is-active {
@@ -20,7 +20,7 @@
 .rl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
 .rl-list li {
   display: flex; align-items: flex-start; gap: 7px;
-  padding: 5px 7px; border-radius: 5px; border: 1px solid transparent;
+  padding: 5px 7px; border: 1px solid transparent;
 }
 .rl-list li:hover { background: var(--surface-2); }
 .rl-list li.is-held { border-color: var(--border); background: var(--surface-2); }
@@ -42,7 +42,7 @@
 }
 .rl-action {
   flex: 0 0 auto; font: inherit; font-size: 10px; padding: 2px 8px; cursor: pointer;
-  border-radius: 4px; background: var(--surface-3); color: var(--text-dim);
+  background: var(--surface-3); color: var(--text-dim);
   border: 1px solid var(--border-strong);
 }
 .rl-action:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
@@ -51,7 +51,7 @@
 
 .rl-more {
   width: 100%; margin-top: 6px; font: inherit; font-size: 11px; padding: 5px 0;
-  cursor: pointer; border-radius: 5px;
+  cursor: pointer;
   background: var(--surface-2); color: var(--text-dim);
   border: 1px dashed var(--border-strong);
 }
@@ -66,7 +66,6 @@
   border: 1px solid transparent;
   background: none;
   color: var(--text-dim);
-  border-radius: 5px;
   cursor: pointer;
   font-size: 14px;
   line-height: 1;

@@ -18,7 +18,6 @@
   font: inherit;
   padding: 3px 10px;
   border: 1px solid var(--border);
-  border-radius: 5px;
   background: var(--surface-2);
   color: var(--text);
   cursor: pointer;
@@ -67,7 +66,6 @@
 .tl-edge-legend i {
   width: 14px;
   height: 2px;
-  border-radius: 1px;
   background: currentColor;
 }
 .tl-edge-legend .is-ref  { color: var(--link-ref); }
@@ -97,8 +95,6 @@
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border-strong);
-  border-radius: 5px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
   will-change: transform;
@@ -111,25 +107,37 @@
   opacity: 0.16;
   filter: saturate(0.4);
 }
-/* Selection is drawn as a ring outside the card, never by recolouring the
-   border: that colour carries reading status and must stay readable. */
+/* Neither state recolours the border: that colour carries reading status and
+   has to stay readable whatever else is going on. */
 .tl-box.is-linked {
   box-shadow: 0 0 0 1px var(--accent-soft), 0 2px 8px rgb(0 0 0 / 0.3);
   z-index: 1;
 }
+/*
+ * Selection thickens the edge outward, with an outline lying flush against the
+ * border — `outline-offset: 0`, where the 1px offset it had before left a gap
+ * and made the two read as a double border rather than one heavy one.
+ *
+ * Outward is the point. A thicker border grows inward, taking its width out of
+ * the card whichever way the padding is set: the background, the text column
+ * and the badge corner all step in by 2px, which is the card shrinking under
+ * the pointer. An outline is drawn outside the border box and takes part in no
+ * layout at all, so the card underneath is untouched — same size, same text,
+ * same wrap — and the 2px a side it gains falls into the 6px gutter between
+ * the columns. The colour has to be repeated here because an outline cannot
+ * borrow the border's, and the border's colour is the reading status.
+ */
 .tl-box.is-active {
   background: var(--surface-3);
-  outline: 2px solid;                 /* colour comes from the status below */
-  outline-offset: 1px;
+  outline: 2px solid var(--border-strong);
+  outline-offset: 0;
   box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
   z-index: 2;
 }
-.tl-box.status-unread.is-active,
-.tl-box.status-archived.is-active { outline-color: var(--border-strong); }
-.tl-box.status-queued.is-active   { outline-color: #3b82f6; }
-.tl-box.status-reading.is-active  { outline-color: #a855f7; }
-.tl-box.status-skimmed.is-active  { outline-color: #f59e0b; }
-.tl-box.status-read.is-active     { outline-color: #10b981; }
+.tl-box.status-queued.is-active  { outline-color: #3b82f6; }
+.tl-box.status-reading.is-active { outline-color: #a855f7; }
+.tl-box.status-skimmed.is-active { outline-color: #f59e0b; }
+.tl-box.status-read.is-active    { outline-color: #10b981; }
 .tl-box {
   /* Cards are not dragged any more — a card's column is its interval — so the
      pointer says "click", not "grab". */
@@ -154,7 +162,6 @@
   right: 5px;
   width: 5px;
   height: 5px;
-  border-radius: 50%;
   background: currentColor;
   opacity: 0.7;
 }
@@ -184,14 +191,13 @@
    year survives — it is what the whole view is ordered by. */
 .tl-box-year { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 
-.kind-topic      { border-left-color: #3b82f6; }
-.kind-supplement { border-left-color: #f59e0b; }
-.kind-dataset    { border-left-color: #10b981; }
-.kind-background { border-left-color: #6b7280; }
-.kind-method     { border-left-color: #8b5cf6; }
-
-/* Reading status is the card outline; the left stripe stays with the shelf, so
-   a glance gives both what a paper is and how far you have got with it. */
+/* Reading status is the card outline. The shelf kind used to be a thicker
+   stripe down the left edge, but its colour never actually reached the screen:
+   these status rules set the `border-color` shorthand at a higher specificity,
+   so all four sides took the status colour and the stripe was left as nothing
+   but a heavier left edge, reading as a double border. Both are gone; if the
+   shelf is worth showing on a card it needs a mark of its own, not a border
+   this rule overwrites. */
 .tl-box.status-unread   { border-color: var(--border); }
 .tl-box.status-queued   { border-color: #3b82f6; }
 .tl-box.status-reading  { border-color: #a855f7; }
@@ -214,6 +220,26 @@
 /* Lifts only where the card already has your attention. */
 .tl-box.is-active .tl-pdf,
 .tl-box.is-pinned .tl-pdf { opacity: 0.9; }
+
+/* Favourite. Loud on purpose — unlike the PDF mark this is the one thing the
+   reader themself singled out, and the point of it is to be findable in a grid
+   of a hundred cards, at a glance and at any zoom.
+
+   It straddles the top-left corner: half on the card, half over the edge, so it
+   reads as a badge pinned to the card rather than as part of the title. The
+   shadow is what keeps it legible over the overhang, where it sits on the
+   canvas rather than on the card. */
+.tl-fav {
+  position: absolute;
+  top: -0.26em;
+  left: -0.22em;
+  line-height: 1;
+  color: var(--warn);
+  text-shadow: 0 0 3px var(--surface), 0 1px 2px rgb(0 0 0 / 0.7);
+  pointer-events: none;
+  z-index: 1;
+}
+.tl-box.is-dimmed .tl-fav { opacity: 0.6; }
 
 /* The badge occupies the top-right, so the pin marker moves to the left. */
 .tl-box.is-pinned::after { top: 4px; right: 5px; }
@@ -251,6 +277,14 @@
 /* The sort key, so it leads and is legible at this size. */
 .tl-box .tl-box-year { font-weight: 700; font-size: 1.05em; color: var(--text); }
 .tl-box .tl-pdf { font-size: 0.8em; }
+/* Set off the title size rather than the card's own font, which does not
+   change with the zoom — so the badge grows with the card the way the text
+   does. Well above the title, since it has to carry at a glance, with a floor
+   below which a star stops reading as a star. */
+.tl-box .tl-fav { font-size: max(10px, calc(var(--title-font, 9.5px) * 1.7)); }
+/* The badge overhangs the corner but still covers the start of the first line,
+   so that line alone steps aside. Roughly the width left sitting on the card. */
+.tl-box.is-fav .tl-box-title { text-indent: calc(var(--title-font, 9.5px) * 1.5); }
 
 /* Interval headings above each five-year column. */
 .tl-bins { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
@@ -270,8 +304,7 @@
 .tl-bin-control { display: inline-flex; align-items: center; gap: 1px; }
 .tl-bin-control button {
   font: inherit; font-size: 13px; line-height: 1; width: 22px; padding: 4px 0;
-  cursor: pointer; border-radius: 4px;
-  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  cursor: pointer; background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
 }
 .tl-bin-control button:hover:not(:disabled) { border-color: var(--accent); }
 .tl-bin-control button:disabled { opacity: 0.4; cursor: default; }
