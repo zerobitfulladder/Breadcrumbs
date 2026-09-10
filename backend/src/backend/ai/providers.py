@@ -1,8 +1,11 @@
-"""Chat completions across providers, through one OpenAI-compatible client.
+"""Chat completions across providers, behind one interface.
 
-OpenRouter, DeepSeek and Gemini all expose an OpenAI-shaped endpoint, so a
-single implementation covers them and adding another is a base URL. Keeping
-this uniform is what lets any task run on any model.
+OpenRouter, OpenAI, DeepSeek and Gemini all expose an OpenAI-shaped endpoint,
+so a single implementation covers them and adding another is a base URL.
+
+Anthropic does not, and its own SDK carries the translation instead: see
+`native` below and `anthropic_api.py`. The seam is here, so nothing above this
+file knows which shape a provider speaks, and any task still runs on any model.
 """
 from __future__ import annotations
 
@@ -22,6 +25,9 @@ class Provider:
     base_url: str
     setting: str          # which stored setting holds the key
     docs: str
+    #: True when this provider speaks its own API rather than the OpenAI shape,
+    #: and calls are handed to a dedicated module instead of the shared client.
+    native: bool = False
 
 
 PROVIDERS: dict[str, Provider] = {
@@ -30,6 +36,19 @@ PROVIDERS: dict[str, Provider] = {
         "https://openrouter.ai/api/v1",
         "ai_openrouter_key",
         "https://openrouter.ai/keys",
+    ),
+    "anthropic": Provider(
+        "anthropic", "Anthropic (Claude)",
+        "https://api.anthropic.com/v1",
+        "ai_anthropic_key",
+        "https://console.anthropic.com/settings/keys",
+        native=True,
+    ),
+    "openai": Provider(
+        "openai", "OpenAI",
+        "https://api.openai.com/v1",
+        "ai_openai_key",
+        "https://platform.openai.com/api-keys",
     ),
     "gemini": Provider(
         "gemini", "Google Gemini",
@@ -69,6 +88,10 @@ async def list_models(
         raise SourceError("ai", f"unknown provider '{provider}'")
     if not api_key:
         raise SourceError("ai", f"no API key stored for {p.label}")
+    if p.native:
+        from . import anthropic_api
+
+        return await anthropic_api.list_models(api_key)
 
     try:
         resp = await client.get(f"{p.base_url}/models", headers=_headers(api_key), timeout=45.0)
@@ -193,6 +216,10 @@ async def chat(
         raise SourceError("ai", f"unknown provider '{provider}'")
     if not api_key:
         raise SourceError("ai", f"no API key stored for {p.label}")
+    if p.native:
+        from . import anthropic_api
+
+        return await anthropic_api.chat(model, api_key, messages, tool_schemas, thinking)
 
     payload: dict[str, Any] = {"model": model, "messages": messages, "temperature": 0.2}
     if tool_schemas:
@@ -286,6 +313,10 @@ async def complete_json(
         raise SourceError("ai", f"no API key stored for {p.label}")
     if not model:
         raise SourceError("ai", "no model chosen for this task")
+    if p.native:
+        from . import anthropic_api
+
+        return await anthropic_api.complete_json(model, api_key, system, user)
 
     payload = {
         "model": model,

@@ -377,6 +377,8 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     -- AI providers. Keys are write-only over the API: they are never sent back
     -- to the browser, only a flag saying whether one is stored.
     ('ai_openrouter_key',    ''),
+    ('ai_anthropic_key',     ''),
+    ('ai_openai_key',        ''),
     ('ai_gemini_key',        ''),
     ('ai_deepseek_key',      ''),
 

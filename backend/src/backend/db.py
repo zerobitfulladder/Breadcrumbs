@@ -300,6 +300,8 @@ SECRET_KEYS = {
     "openalex_key",
     "semantic_scholar_key",
     "ai_openrouter_key",
+    "ai_anthropic_key",
+    "ai_openai_key",
     "ai_gemini_key",
     "ai_deepseek_key",
     "search_api_key",

@@ -734,6 +734,10 @@ export interface Settings {
   institution_proxy: string;
   ai_openrouter_key: string;
   ai_openrouter_key_set?: boolean;
+  ai_anthropic_key: string;
+  ai_anthropic_key_set?: boolean;
+  ai_openai_key: string;
+  ai_openai_key_set?: boolean;
   ai_gemini_key: string;
   ai_gemini_key_set?: boolean;
   ai_deepseek_key: string;

@@ -7,6 +7,10 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    # Claude does not speak the OpenAI shape, so its own SDK carries the
+    # translation rather than this repo maintaining one. Every other provider
+    # goes through the shared httpx client in ai/providers.py.
+    "anthropic>=0.40.0",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "pymupdf>=1.28.2",

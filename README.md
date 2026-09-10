@@ -55,8 +55,10 @@ Optional:
   is skipped when it throttles and OpenAlex supplies references instead.
 - **Institution proxy.** An EZproxy/OpenAthens prefix, used to build publisher
   links that go through your subscription.
-- **AI keys.** A provider (OpenRouter, Gemini or DeepSeek) and a search
-  provider (Brave or Tavily) for the assistant.
+- **AI keys.** A provider and a search provider (Brave or Tavily) for the
+  assistant. Providers are Anthropic, OpenAI, OpenRouter, Gemini and DeepSeek;
+  each lists its own models, so the picker shows what your key can reach rather
+  than a hardcoded list.
 
 ## The grid
 
@@ -157,8 +159,18 @@ Tool calls stream into the conversation as they happen, so a wrong action can be
 caught while it runs. SQL access is read-only through a separate connection, not
 a pattern check.
 
-Configure under Settings → AI. For OpenRouter you can pin the upstream provider;
-endpoints are listed cheapest-first and pinning turns fallbacks off.
+Configure under Settings → AI. Anthropic, OpenAI, OpenRouter, Gemini and
+DeepSeek are all supported; the model picker is a combobox that matches tokens
+independently, so `gpt 4o` and `4o gpt` both find `openai/gpt-4o`.
+
+Only OpenRouter routes: for it you can pin the upstream provider, with endpoints
+listed cheapest-first and fallbacks turned off. Everyone else serves their own
+models, so the choice is hidden.
+
+Claude is the one provider that does not speak the OpenAI shape, so it goes
+through the official SDK rather than the shared HTTP client. Reasoning maps to
+whichever form the model takes: current models think adaptively and take an
+effort level, older ones a fixed token budget.
 
 ## Publishing a read-only copy
 

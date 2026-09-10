@@ -55,7 +55,8 @@ export default function Settings() {
       // An empty key field means "keep what is stored", never "erase it".
       for (const k of [
         "openalex_key", "semantic_scholar_key", "search_api_key",
-        "ai_openrouter_key", "ai_gemini_key", "ai_deepseek_key",
+        "ai_openrouter_key", "ai_anthropic_key", "ai_openai_key",
+        "ai_gemini_key", "ai_deepseek_key",
       ] as const) {
         if (data[k]) body[k] = data[k];
       }

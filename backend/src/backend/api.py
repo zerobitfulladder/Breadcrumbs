@@ -75,6 +75,8 @@ class SettingsRequest(BaseModel):
     fetch_references: bool | None = None
     institution_proxy: str | None = None
     ai_openrouter_key: str | None = None
+    ai_anthropic_key: str | None = None
+    ai_openai_key: str | None = None
     ai_gemini_key: str | None = None
     ai_deepseek_key: str | None = None
     search_provider: str | None = None
