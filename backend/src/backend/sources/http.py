@@ -243,9 +243,15 @@ class _RefuseTransport(httpx.AsyncBaseTransport):
         raise httpx.ConnectError("offline: this build makes no network requests")
 
 
+#: Named once, because more than one client speaks for this app and at least
+#: one host — Wikimedia — answers 403 to anyone who does not introduce
+#: themselves.
+USER_AGENT = "Breadcrumbs/0.1 (literature study tool)"
+
+
 def make_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
         follow_redirects=True,
-        headers={"User-Agent": "Breadcrumbs/0.1 (literature study tool)"},
+        headers={"User-Agent": USER_AGENT},
         transport=_RefuseTransport() if _offline else None,
     )

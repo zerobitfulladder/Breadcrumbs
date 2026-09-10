@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { api } from "../api";
+import { api, assetUrl } from "../api";
 import type { Author } from "../api";
 import "./AuthorChip.css";
 
@@ -81,7 +81,9 @@ export default function AuthorChip({ author, onOpen }: Props) {
           style={at ? { left: at.left, bottom: at.bottom } : undefined}
         >
           {thumb ? (
-            <img src={thumb} alt="" loading="lazy" />
+            /* assetUrl because in a published copy the portrait is a file in
+               the export rather than a URL on Wikipedia. */
+            <img src={assetUrl(thumb)} alt="" loading="lazy" />
           ) : (
             <span className="ac-blank">
               {loading

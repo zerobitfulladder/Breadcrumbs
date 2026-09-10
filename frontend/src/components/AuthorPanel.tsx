@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, ApiError, STATIC_MODE } from "../api";
+import { api, ApiError, STATIC_MODE, assetUrl } from "../api";
 import type { AuthorDetail, AuthorLink, AuthorProfile, AuthorStats, AuthorWork } from "../api";
 import PaperPreviewCard from "./PaperPreviewCard";
 import "./AuthorPanel.css";
@@ -146,13 +146,20 @@ export default function AuthorPanel({
     return <aside className="ap-root"><div className="ap-error">{error ?? "Not found"}</div></aside>;
   }
 
-  const stored = Boolean(profile?.custom_image);
+  /*
+   * A stored portrait is served by a route, which a published copy has no way
+   * to answer; there the export has copied the file in and rewritten the URL to
+   * point at it, so the same branch that reads a Wikipedia portrait reads this
+   * one too. The cache-busting version only means anything where the picture
+   * can actually be changed.
+   */
+  const stored = Boolean(profile?.custom_image) && !STATIC_MODE;
   const thumb = stored
     ? `${api.authorPhotoUrl(authorId)}?v=${photoVersion}`
-    : (profile?.portrait_url ?? profile?.thumbnail_url ?? profile?.image_url);
+    : assetUrl(profile?.portrait_url ?? profile?.thumbnail_url ?? profile?.image_url);
   const full = stored
     ? `${api.authorPhotoUrl(authorId)}?v=${photoVersion}`
-    : (profile?.portrait_full_url ?? profile?.image_url ?? profile?.thumbnail_url);
+    : assetUrl(profile?.portrait_full_url ?? profile?.image_url ?? profile?.thumbnail_url);
 
   async function afterPhotoChange() {
     setPhotoVersion((v) => v + 1);

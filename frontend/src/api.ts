@@ -26,6 +26,22 @@ const STATIC_BASE = import.meta.env.VITE_STATIC_BASE ?? "./data";
  */
 const STATIC_VERSION = import.meta.env.VITE_STATIC_VERSION ?? "";
 
+/**
+ * An image the data points at, made loadable from wherever the page is served.
+ *
+ * A portrait is either a URL somewhere else — Wikipedia, usually — or a file
+ * the export copied in beside the JSON. The first kind is absolute and is used
+ * as it stands. The second is written relative to the data directory, because
+ * at export time nobody knows what path the site will live at, so it is joined
+ * to that directory here. Outside a published copy nothing is relative and this
+ * hands back what it was given.
+ */
+export function assetUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (!STATIC_MODE || /^(https?:)?\/\//.test(url)) return url;
+  return staticUrl(url);
+}
+
 /** A file in the frozen export, by name. */
 export function staticUrl(name: string): string {
   const url = `${STATIC_BASE}/${name}`;
