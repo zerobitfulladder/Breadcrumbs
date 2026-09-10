@@ -35,7 +35,10 @@
   background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border);
 }
-.pl-controls input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.pl-controls input:focus {
+  outline: 2px solid var(--accent-soft); border-color: var(--accent);
+  box-shadow: 0 0 14px -4px var(--accent);
+}
 .pl-sorts { display: flex; gap: 3px; margin-top: 6px; }
 .pl-sorts button {
   flex: 1; font: inherit; font-size: 10.5px; padding: 3px 0; cursor: pointer;
@@ -43,7 +46,8 @@
   background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
 }
 .pl-sorts button.is-active {
-  background: var(--accent-bg); color: var(--text); border-color: var(--accent);
+  background: var(--accent-bg); color: var(--accent); border-color: var(--accent);
+  box-shadow: 0 0 12px -4px var(--accent);
 }
 /* The arrow is inside the button, so the label must not shift when it appears
    and disappears — the button is flex:1 and the arrow only takes its own width. */
@@ -51,8 +55,42 @@
 
 .pl-list { list-style: none; margin: 0; padding: 5px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
 
-.pl-row { display: flex; align-items: center; gap: 2px; }
-.pl-row .pl-item { flex: 1 1 auto; min-width: 0; }
+.pl-row { position: relative; display: flex; align-items: center; gap: 2px; }
+/* Room at the right for the corner mark, kept on every row and not only the
+   marked ones, so favouriting a paper does not rewrap its title. */
+.pl-row .pl-item { flex: 1 1 auto; min-width: 0; padding-right: 17px; }
+/* The last favourite, when the list holds anything else. Favourites are held at
+   the top whatever the sort is doing, and this is the line that says so —
+   otherwise the group reads as an arbitrary opening to the ordering below. */
+.pl-row.is-fav-edge {
+  position: relative;
+  border-bottom: 1px solid var(--warn);
+  margin-bottom: 5px;
+  padding-bottom: 5px;
+}
+/* The rule's own glow, drawn by a element sitting on the line rather than by a
+   shadow on the row. A box-shadow blooms from the whole row box, so a 12px
+   blur reached up over the row above and lit it too; this can only spill from
+   the 1px it is. */
+.pl-row.is-fav-edge::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  box-shadow: 0 0 8px 1px var(--warn);
+  pointer-events: none;
+}
+/* Everything above that line is starred, so the group is washed in the colour
+   the mark is drawn in and the eye takes the block in at once rather than
+   reading down to find where it ends.
+
+   On the row and not on .pl-item, which is the button alone: the mark sits
+   beside it, and a wash that stopped short of the mark left a notch cut out of
+   every row. Hover and selection still paint the button, as they do anywhere
+   else in this list. */
+.pl-row:has(.sb-star.is-on) {
+  background: color-mix(in oklab, var(--warn) 10%, var(--surface));
+}
 
 .pl-item {
   width: 100%; display: flex; gap: 8px; text-align: left; cursor: pointer;
@@ -62,11 +100,18 @@
 }
 .pl-item:hover { background: var(--surface-2); }
 .pl-item.is-linked { border-color: var(--accent); }
-.pl-item.is-active { background: var(--accent-bg); border-color: var(--accent); }
+/* The row you are on, lit like the card it points at. */
+.pl-item.is-active {
+  background: var(--accent-bg); border-color: var(--accent);
+  box-shadow: 0 0 16px -5px var(--accent);
+}
+.pl-item.is-active .pl-item-title { color: var(--text); }
+.pl-item.is-active .pl-item-year { color: var(--accent); }
 .pl-item.is-pinned .pl-item-year::after {
   content: "";
   display: inline-block; width: 4px; height: 4px; margin-left: 4px;
   background: var(--accent); vertical-align: middle;
+  box-shadow: 0 0 8px 1px var(--accent);
 }
 
 .pl-item-year {

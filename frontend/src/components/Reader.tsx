@@ -15,7 +15,16 @@ interface Props {
   paperId: number;
 }
 
-const COLORS = ["#fde047", "#86efac", "#93c5fd", "#f9a8d4", "#fdba74"];
+/*
+ * The highlighter pens, from the palette's five neons.
+ *
+ * These are laid over a white PDF page with `mix-blend-mode: multiply`, which
+ * is why they are the bright end of each hue and not the dim: multiply darkens,
+ * and a dim pen turns the words under it to mud. Only new highlights take these
+ * — every one already made keeps the colour it was drawn with, since the colour
+ * is stored per highlight rather than looked up.
+ */
+const COLORS = ["#fcee0c", "#ccff00", "#05d9e8", "#ff80b0", "#b967ff"];
 
 /**
  * A standalone page for reading one paper, opened in its own tab.
@@ -418,7 +427,7 @@ export default function Reader({ paperId }: Props) {
                   title="Jump to this passage"
                 >
                   <div className="rd-hl-head">
-                    <span className="rd-hl-swatch" style={{ background: h.color ?? "#fde047" }} />
+                    <span className="rd-hl-swatch" style={{ background: h.color ?? COLORS[0] }} />
                     <span className="rd-hl-page">p{h.page}</span>
                     {h.source === "assistant" && <span className="rd-hl-who">Bread</span>}
                     <button

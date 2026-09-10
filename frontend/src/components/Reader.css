@@ -26,7 +26,8 @@
 .rd-nopdf a { color: var(--accent); font-size: 12px; }
 .rd-upload {
   margin-top: 8px; font-size: 12px; padding: 7px 15px; cursor: pointer;
-  background: var(--accent); color: #fff; border: none;
+  background: var(--accent); color: var(--surface); border: none;
+  box-shadow: 0 0 16px -5px var(--accent);
 }
 .rd-upload input { display: none; }
 
@@ -66,7 +67,7 @@
 .rd-pdf.is-dark .pv-mark, .rd-pdf.is-dark .pv-sel { mix-blend-mode: screen; opacity: 0.42; }
 .rd-pdf.is-dark .pv-mark:hover { opacity: 0.6; filter: none; }
 .rd-pdf.is-dark .pv-mark.is-active { opacity: 0.7; filter: none; }
-.rd-pdf.is-dark .pv-root { background: #0f1115; }
+.rd-pdf.is-dark .pv-root { background: var(--surface); }
 
 .rd-toggle {
   flex: 0 0 auto; font: inherit; font-size: 11px; padding: 4px 10px; cursor: pointer;
@@ -141,7 +142,7 @@
   border: 1px solid var(--border);
 }
 .rd-note-actions { display: flex; gap: 5px; justify-content: flex-end; }
-.rd-note-actions .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rd-note-actions .primary { background: var(--accent); color: var(--surface); border-color: var(--accent); box-shadow: 0 0 16px -5px var(--accent); }
 
 .rd-side { flex: 0 0 auto; min-width: 0; display: flex; flex-direction: column; }
 

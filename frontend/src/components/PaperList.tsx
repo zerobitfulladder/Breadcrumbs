@@ -34,6 +34,24 @@ type Mode = "papers" | "authors";
 /** Which way a column reads first. Numbers open on the largest, names on A. */
 const FIRST_DIR: Record<SortKey, Dir> = { year: "desc", title: "asc", cites: "desc" };
 
+/**
+ * Favourites first, then whatever the columns say.
+ *
+ * A starred paper is one the reader singled out, and hunting for it in a list
+ * of a hundred and forty defeats the point of having starred it. So the star
+ * outranks the sort rather than participating in it: the two groups are ordered
+ * by the chosen column independently, and flipping a column reorders inside
+ * each without moving anything across the line between them.
+ */
+function favouritesFirst<T extends { favorite?: number }>(
+  rows: T[],
+  compare: (a: T, b: T) => number,
+): T[] {
+  return [...rows].sort(
+    (a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || compare(a, b),
+  );
+}
+
 export default function PaperList({
   papers,
   authors,
@@ -83,7 +101,7 @@ export default function PaperList({
     // The direction flips the chosen column only. Title stays the tie-break in
     // reading order either way, so equal years never shuffle when you flip.
     const flip = dir === "desc" ? -1 : 1;
-    return [...filtered].sort((a, b) => {
+    return favouritesFirst(filtered, (a, b) => {
       if (sort === "title") return flip * a.title.localeCompare(b.title);
       if (sort === "cites")
         return (
@@ -105,13 +123,26 @@ export default function PaperList({
       : authors;
 
     const flip = dir === "desc" ? -1 : 1;
-    return [...filtered].sort((a, b) => {
+    return favouritesFirst(filtered, (a, b) => {
       if (sort === "title") return flip * a.name.localeCompare(b.name);
       if (sort === "cites")
         return flip * (a.paper_count - b.paper_count) || a.name.localeCompare(b.name);
       return flip * ((a.first_year ?? 0) - (b.first_year ?? 0)) || a.name.localeCompare(b.name);
     });
   }, [authors, query, sort, dir]);
+
+  /*
+   * Where the line between the groups falls: the index of the last favourite,
+   * and only when there is something on the other side of it. A list that is
+   * all favourites, or none, gets no rule — a separator with nothing under it
+   * is a line for its own sake.
+   */
+  const favEdge = (rows: { favorite?: number }[]) => {
+    const favourites = rows.filter((r) => r.favorite).length;
+    return favourites && favourites < rows.length ? favourites - 1 : -1;
+  };
+  const paperEdge = favEdge(shown);
+  const authorEdge = favEdge(shownAuthors);
 
   if (collapsed) {
     return (
@@ -196,8 +227,8 @@ export default function PaperList({
 
       {mode === "authors" ? (
         <ul className="pl-list" onPointerLeave={() => onHoverAuthor?.(null)}>
-          {shownAuthors.map((a) => (
-            <li key={a.id} className="pl-row">
+          {shownAuthors.map((a, i) => (
+            <li key={a.id} className={`pl-row${i === authorEdge ? " is-fav-edge" : ""}`}>
               <button
                 className={[
                   "pl-item",
@@ -233,11 +264,11 @@ export default function PaperList({
         </ul>
       ) : (
       <ul className="pl-list" onPointerLeave={() => onHover?.(null)}>
-        {shown.map((p) => {
+        {shown.map((p, i) => {
           const isActive = p.id === activeId;
           const isLinked = connectedIds?.has(p.id) ?? false;
           return (
-            <li key={p.id} className="pl-row">
+            <li key={p.id} className={`pl-row${i === paperEdge ? " is-fav-edge" : ""}`}>
               <button
                 className={[
                   "pl-item",

@@ -1,62 +1,99 @@
+/*
+ * INDIGO Cyberpunk: Night City after rain.
+ *
+ * Deep blue-violet blacks, cool enough to throw the neons forward without
+ * going pure black, which crushes the glow. Every value below is from
+ * ~/Scripts/palette_cyberpunk.py; the palette's own name is in the comment
+ * beside it, so a token can be traced back to what it was picked to mean.
+ *
+ * Dark only, on purpose. The palette has no light surfaces to build a second
+ * theme out of, and a hand-invented light variant would not be this palette;
+ * it would be a guess wearing its name. The light-scheme block that used to
+ * sit here is gone rather than approximated.
+ *
+ * Hues carry meaning and are not reused across roles that meet on screen:
+ *
+ *   magenta   selection, focus, links, references     the primary neon
+ *   cyan      data and queues, work that cited back
+ *   violet    in progress
+ *   yellow    identity and attention: favourites, warnings, skimmed
+ *   lime      done, stored, succeeded
+ *   crimson   errors, and only errors
+ */
 :root {
-  --surface: #14161a;
-  --surface-2: #1b1e24;
-  --surface-3: #24282f;
-  --border: #2c313a;
-  --border-strong: #3d434e;
-  --text: #e4e7ec;
-  --text-dim: #8b93a1;
-  --accent: #4f8ef7;
-  --accent-bg: #1a2740;
-  --accent-soft: #4f8ef755;
-  --edge: #4a5160;
+  --surface: #0a0418;          /* BASE_BLACK   the page itself */
+  --surface-2: #0d0820;        /* BASE_SHADOW  cards, panels, sidebars */
+  --surface-3: #1e1838;        /* BASE_SURFACE hover, active, selection */
+  --border: #15102a;           /* BASE_GUTTER  the quiet edge */
+  --border-strong: #5a4a78;    /* BASE_MUTED   the edge that has to be seen */
+
+  --text: #c8d0e8;             /* FG_BRIGHT    13:1 on the page */
+  --text-dim: #a0a8c8;         /* FG           8:1 on a card */
+
+  /* Magenta is the primary neon: what you picked, what you are on, where a
+     link goes. Dark text on it rather than white, which manages only 3.6:1. */
+  --accent: #ff2a6d;           /* MAGENTA_BRIGHT */
+  --accent-bg: #3a0a2a;        /* MAGENTA_DIM */
+  --accent-soft: #ff2a6d55;
+
   /* The two ends of a citation: work a paper drew on, and work that cited it
-     back. Kept off the accent blue, which already means "selected". */
-  --link-ref: #fb923c;
-  --link-cite: #a78bfa;
-  --ok: #34d399;
-  --ok-bg: #10291f;
-  --ok-fg: #a7f3d0;
-  --danger: #f87171;
-  --danger-bg: #2a1618;
-  --danger-fg: #fecaca;
-  --warn: #fbbf24;
-  --warn-bg: #2a2213;
-  --warn-fg: #fde68a;
+     back. Magenta is already "connected to this", so references keep it and
+     the return direction takes cyan, which reads as data arriving. */
+  --link-ref: #ff2a6d;         /* MAGENTA_BRIGHT */
+  --link-cite: #05d9e8;        /* CYAN_BRIGHT */
+
+  --ok: #99cc00;               /* LIME_MID */
+  --ok-bg: #3a4a0a;            /* LIME_DIM */
+  --ok-fg: #ccff00;            /* LIME_BRIGHT */
+
+  /* Crimson is spent on errors alone, so it never has to compete to mean stop.
+     Its background is the same red mixed a fifth of the way into the page,
+     which is the one value here the palette does not name outright. */
+  --danger: #ff003c;           /* ERROR */
+  --danger-bg: #2e0e22;
+  --danger-fg: #ff80b0;        /* MAGENTA_BLOOM */
+
+  --warn: #fcee0c;             /* YELLOW_BRIGHT */
+  --warn-bg: #3a3010;          /* YELLOW_FAINT */
+  --warn-fg: #fcee0c;          /* YELLOW_BRIGHT */
 
   color-scheme: dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --surface: #ffffff;
-    --surface-2: #f6f7f9;
-    --surface-3: #eceef2;
-    --border: #dfe3e9;
-    --border-strong: #c3c9d3;
-    --text: #1b1f27;
-    --text-dim: #6b7280;
-    --accent: #2563eb;
-    --accent-bg: #e8effd;
-    --accent-soft: #2563eb44;
-    --edge: #b6bdc9;
-    --link-ref: #c2410c;
-    --link-cite: #7c3aed;
-    --ok: #059669;
-    --ok-bg: #ecfdf5;
-    --ok-fg: #065f46;
-    --danger: #dc2626;
-    --danger-bg: #fef2f2;
-    --danger-fg: #991b1b;
-    --warn: #d97706;
-    --warn-bg: #fffbeb;
-    --warn-fg: #92400e;
-    color-scheme: light;
-  }
-}
-
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--surface); color: var(--text); }
+
+/*
+ * The things a browser draws for itself, which are the last places a theme
+ * reaches and the first that give it away.
+ */
+
+/* Dragging over text should look like a highlighter, not like Windows 95. */
+::selection { background: var(--accent); color: var(--surface); }
+
+/* Keyboard focus in the accent, and bloomed, because a focus ring that is only
+   a thin line is the one thing on a dark page you can lose. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 12px -2px var(--accent);
+}
+
+/* Firefox takes two colours and draws the rest itself. */
+* { scrollbar-color: var(--border-strong) transparent; scrollbar-width: thin; }
+/* Everyone else gets the parts named individually. The thumb lights up on the
+   way past: a scrollbar is furniture until you reach for it. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 2px solid var(--surface);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  box-shadow: 0 0 10px -2px var(--accent);
+}
+::-webkit-scrollbar-corner { background: var(--surface); }

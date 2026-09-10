@@ -68,9 +68,9 @@
   background: var(--accent-bg); color: var(--text);
   border: 1px solid var(--accent);
 }
-.md-paper:hover { background: var(--accent); color: #fff; }
+.md-paper:hover { background: var(--accent); color: var(--surface); box-shadow: 0 0 16px -5px var(--accent); }
 .md-paper-icon {
   font-size: 12px; font-weight: 600; line-height: 1;
   color: var(--accent); flex: 0 0 auto;
 }
-.md-paper:hover .md-paper-icon { color: #fff; }
+.md-paper:hover .md-paper-icon { color: var(--surface); }

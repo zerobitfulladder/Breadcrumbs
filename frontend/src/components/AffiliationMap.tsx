@@ -17,6 +17,15 @@ interface Props {
 // which is not a dependency worth having in a local tool. The dark look is
 // recreated with a CSS filter instead.
 const TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+/**
+ * Leaflet paints into a canvas and takes colours as strings, so the theme has
+ * to be read out rather than inherited. Taken from the stylesheet at call time,
+ * so the markers cannot drift from the legend beside them; the literals are
+ * only what a browser that has not applied the sheet yet would draw.
+ */
+const themed = (name: string, fallback: string): string =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 const ATTRIBUTION = "&copy; OpenStreetMap contributors";
 
 /**
@@ -74,6 +83,9 @@ function MapCanvas({
     if (!points.length) return;
 
     const maxAuthors = Math.max(...points.map((p) => p.author_count));
+    // Read once for the whole layer, not once per institution.
+    const accent = themed("--accent", "#ff2a6d");
+    const ok = themed("--ok", "#99cc00");
     for (const point of points) {
       // A marker is one institution however many authors it holds; size shows
       // how many, so duplicates stay merged without losing that information.
@@ -81,8 +93,8 @@ function MapCanvas({
       const marker = L.circleMarker([point.lat, point.lon], {
         radius: (interactive ? 6 : 5) + share * (interactive ? 10 : 7),
         weight: 2,
-        color: point.current ? "#10b981" : "#4f8ef7",
-        fillColor: point.current ? "#10b981" : "#4f8ef7",
+        color: point.current ? ok : accent,
+        fillColor: point.current ? ok : accent,
         fillOpacity: 0.35,
       });
       marker.bindTooltip(

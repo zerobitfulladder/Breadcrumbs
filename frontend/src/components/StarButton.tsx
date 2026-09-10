@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, STATIC_MODE } from "../api";
 import { notifyChange } from "../live";
 import "./StarButton.css";
 
@@ -37,6 +37,25 @@ export default function StarButton({ kind, id, starred, compact }: Props) {
     }
   }
 
+  /*
+   * A published copy has no backend to write to, so the star stops being a
+   * control and becomes what it already was for the reader: the mark saying
+   * this one was singled out. As a button it took the click, flipped, failed
+   * the write and flipped back, which reads as broken rather than read-only.
+   * An unstarred row has nothing to say here, so it says nothing.
+   */
+  if (STATIC_MODE) {
+    if (!on) return null;
+    return (
+      <span
+        className={`sb-star is-on is-static${compact ? " is-compact" : ""}`}
+        title="Favourite"
+      >
+        <span className="sb-mark" />
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -45,7 +64,7 @@ export default function StarButton({ kind, id, starred, compact }: Props) {
       aria-pressed={on}
       title={on ? "Remove from favourites" : "Add to favourites"}
     >
-      {on ? "★" : "☆"}
+      <span className="sb-mark" />
     </button>
   );
 }

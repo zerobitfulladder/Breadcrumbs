@@ -267,6 +267,7 @@ export default function App() {
           <kbd>⇧⇧</kbd> for Bread
         </button>
         )}
+        {STATIC_MODE && <About />}
       </header>
 
       {error && <div className="app-error">{error}</div>}
@@ -311,6 +312,7 @@ export default function App() {
               connectedIds={connectedIds}
               focusMode={activeId != null || activeAuthorId != null}
               focusId={listHoverId}
+              panelOpen={selectedAuthorId != null || detail != null}
               onHover={setHoverId}
               onToggle={toggle}
               onOpenReader={openReader}
@@ -459,7 +461,7 @@ export default function App() {
                             STATIC_MODE ? undefined : () => openReader(detail.id, m.id)
                           }
                         >
-                          <span className="app-mark-page" style={{ background: m.color ?? "#fde047" }}>
+                          <span className="app-mark-page" style={{ background: m.color ?? "#fcee0c" }}>
                             p{m.page}
                           </span>
                           <span className="app-mark-body">
@@ -544,8 +546,6 @@ export default function App() {
         onChanged={() => void refresh()}
       />
       )}
-
-      {STATIC_MODE && <About />}
     </div>
   );
 }

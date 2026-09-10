@@ -9,7 +9,8 @@
 .sb-field input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 .sb-field button {
   flex: 0 0 auto; font: inherit; padding: 11px 20px; cursor: pointer;
-  background: var(--accent); color: #fff; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--surface); border: 1px solid var(--accent);
+  box-shadow: 0 0 16px -5px var(--accent);
 }
 .sb-field button:disabled { opacity: 0.5; cursor: default; }
 

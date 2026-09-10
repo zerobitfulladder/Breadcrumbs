@@ -812,7 +812,7 @@ export default function PdfView({
                           top: `${r.y * 100}%`,
                           width: `${r.w * 100}%`,
                           height: `${r.h * 100}%`,
-                          background: h.color ?? "#fde047",
+                          background: h.color ?? "#fcee0c",
                         }}
                         // Only as a fallback: a note gets the bubble below,
                         // and two tooltips for one mark is one too many.

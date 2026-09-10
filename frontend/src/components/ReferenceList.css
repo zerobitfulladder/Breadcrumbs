@@ -75,7 +75,7 @@
 }
 .rl-list li:hover .rl-remove,
 .rl-remove:focus-visible { opacity: 1; }
-.rl-remove:hover { color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+.rl-remove:hover { color: var(--danger); border-color: var(--danger); }
 .rl-remove:disabled { opacity: 0.4; cursor: default; }
 
 /* Stands where Preview would be on a published copy: the entry is a real

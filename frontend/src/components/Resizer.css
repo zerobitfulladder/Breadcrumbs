@@ -5,4 +5,4 @@
   background: var(--border);
   transition: background 110ms ease;
 }
-.rz-grip:hover, .rz-grip.is-active { background: var(--accent); }
+.rz-grip:hover, .rz-grip.is-active { background: var(--accent); box-shadow: 0 0 16px -5px var(--accent); }

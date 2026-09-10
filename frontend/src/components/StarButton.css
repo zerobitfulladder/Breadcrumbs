@@ -1,15 +1,50 @@
+/*
+ * The favourite mark: the same flag folded over a corner that a favourited
+ * card wears on the timeline, at the size of a list row.
+ *
+ * It was a ★ until it wasn't. A star is a font glyph, which means its weight
+ * and proportions are the system's opinion rather than the theme's, and next
+ * to hard geometry and neon it read as decoration borrowed from somewhere
+ * else. A triangle is the same shape the grid already uses for this, exact at
+ * every size, and it is drawn in the colour rather than outlined in it.
+ */
 .sb-star {
   flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
   font: inherit; font-size: 15px; line-height: 1;
   padding: 2px 4px; cursor: pointer;
   background: none; border: 1px solid transparent;
-  color: var(--text-dim);
+  color: var(--border-strong);
+}
+/* Sized off the button's font, so the compact rule below resizes it too. */
+.sb-mark {
+  display: block;
+  width: 0.7em; height: 0.7em;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 .sb-star:hover { color: var(--warn); }
+/* Set: full strength and lit, the way everything else that is on is lit. */
 .sb-star.is-on { color: var(--warn); }
-/* Inside a list row: small, and invisible until the row is hovered or it is
-   actually set, so 130 hollow stars do not compete with the titles. */
-.sb-star.is-compact { font-size: 12px; padding: 0 2px; opacity: 0; }
+.sb-star.is-on .sb-mark { filter: drop-shadow(0 0 5px var(--warn)); }
+/* The published copy's mark is a mark, not a control: it neither invites a
+   click nor answers one. */
+.sb-star.is-static { cursor: default; }
+/*
+ * Inside a list row: folded over the row's own top-right corner, the way the
+ * timeline's is folded over a card's top-left. The row is the card here, so the
+ * mark belongs on its corner rather than floating at the end of the text; the
+ * corner is mirrored because the left of a row is the year column.
+ *
+ * Invisible until the row is hovered or it is actually set, so 130 unset marks
+ * do not compete with the titles.
+ */
+.sb-star.is-compact {
+  position: absolute;
+  top: 0; right: 0;
+  font-size: 13px; padding: 0; opacity: 0;
+}
+.sb-star.is-compact .sb-mark { clip-path: polygon(100% 0, 100% 100%, 0 0); }
 .sb-star.is-compact.is-on { opacity: 1; }
 .pl-row:hover .sb-star.is-compact,
 .sb-star.is-compact:focus-visible { opacity: 1; }

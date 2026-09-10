@@ -20,6 +20,8 @@ interface Props {
   focusMode?: boolean;
   /** Pan this paper into view when it changes (used by the list sidebar). */
   focusId?: number | null;
+  /** The side panel is showing a paper or an author, so someone is reading. */
+  panelOpen?: boolean;
   onHover?: (id: number | null) => void;
   onToggle?: (id: number) => void;
   onOpenReader?: (id: number) => void;
@@ -28,6 +30,10 @@ interface Props {
 
 /** Pointer movement under this counts as a click, not a drag. */
 const CLICK_SLOP = 4;
+/** Quiet for this long and the grid starts showing itself around. */
+const IDLE_AFTER = 15_000;
+/** How long each paper holds the light once it does. */
+const IDLE_STEP = 3_000;
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 6;
 const VIEW_KEY = "breadcrumbs.grid.view";
@@ -69,6 +75,7 @@ export default function Timeline({
   connectedIds,
   focusMode: focusModeProp,
   focusId = null,
+  panelOpen = false,
   onHover,
   onToggle,
   onOpenReader,
@@ -304,6 +311,105 @@ export default function Timeline({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId, boxById]);
 
+  /*
+   * Left alone, the grid tours itself.
+   *
+   * After fifteen seconds with no pointer, wheel or key, a paper is lit as
+   * though hovered, and another every three seconds after that: the citation
+   * lines come up, the pulses run, and a library sitting on a second monitor
+   * has something to say for itself. Any real input drops it instantly and
+   * starts the fifteen seconds over.
+   *
+   * Only papers currently on screen are candidates. Lighting one that has been
+   * panned out of view would draw its connections to cards nobody can see,
+   * which looks like the grid flickering rather than like it thinking. It also
+   * means the tour never moves the view: where someone left the grid is where
+   * they find it.
+   *
+   * It holds off entirely while the side panel is open. A paper or an author
+   * on show is someone reading a particular thing, and rearranging what is lit
+   * underneath them is not what this is for.
+   */
+  const visibleIds = useMemo(() => {
+    const margin = 8;
+    return grid.boxes
+      .filter(({ x, y, w, h }) => {
+        const left = x + offsetX;
+        const top = y + offsetY;
+        return (
+          left + w > margin && left < size.w - margin &&
+          top + h > margin && top < size.h - margin
+        );
+      })
+      .map((b) => b.paper.id);
+  }, [grid, offsetX, offsetY, size]);
+
+  // Read by the timers, which are bound once and must not see a stale library.
+  const tourRef = useRef({ ids: visibleIds, hover: onHover, panelOpen });
+  tourRef.current = { ids: visibleIds, hover: onHover, panelOpen };
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    let idle: number | undefined;
+    let step: number | undefined;
+    let last: number | null = null;
+
+    const light = () => {
+      const { ids, hover } = tourRef.current;
+      // Opening the panel usually means a click, which wakes this anyway; the
+      // check is for the paths that do not, such as the assistant opening a
+      // paper on its own. Rescheduled rather than simply stopped, so closing
+      // the panel and walking away starts the tour again on its own.
+      if (tourRef.current.panelOpen) {
+        stop();
+        schedule();
+        return;
+      }
+      if (!ids.length) return;
+      let id = ids[Math.floor(Math.random() * ids.length)];
+      // Never the same paper twice running, which would read as the tour
+      // having stopped rather than having chosen.
+      if (ids.length > 1 && id === last) id = ids[(ids.indexOf(id) + 1) % ids.length];
+      last = id;
+      hover?.(id);
+    };
+
+    const stop = () => {
+      if (step === undefined) return;
+      window.clearInterval(step);
+      step = undefined;
+      last = null;
+      tourRef.current.hover?.(null);
+    };
+
+    const begin = () => {
+      // Reading: wait out another fifteen rather than giving up for the session.
+      if (tourRef.current.panelOpen) return schedule();
+      light();
+      step = window.setInterval(light, IDLE_STEP);
+    };
+
+    const schedule = () => {
+      idle = window.setTimeout(begin, IDLE_AFTER);
+    };
+
+    const wake = () => {
+      window.clearTimeout(idle);
+      stop();
+      schedule();
+    };
+
+    schedule();
+    const events = ["pointermove", "pointerdown", "wheel", "keydown"] as const;
+    for (const e of events) window.addEventListener(e, wake, { passive: true });
+    return () => {
+      window.clearTimeout(idle);
+      if (step !== undefined) window.clearInterval(step);
+      for (const e of events) window.removeEventListener(e, wake);
+    };
+  }, []);
+
   /** Centre of a card, for drawing a link between two of them. */
   const centreOf = useCallback(
     (id: number) => {
@@ -328,6 +434,22 @@ export default function Timeline({
       const a = centreOf(l.src_paper_id);
       const b = centreOf(l.dst_paper_id);
       if (!a || !b) return [];
+      /*
+       * The line carries a train of pulses, and they always run from the cited
+       * end to the citing one, which is the direction influence actually moves.
+       *
+       * That reads as two opposite things depending on where you are standing,
+       * which is what makes it worth drawing. Hover a paper and the work it
+       * drew on sends pulses *into* it; the work that came back to cite it
+       * takes pulses *out*. Both are the same rule, and the path is always
+       * written src → dst, so they always travel towards the path's start and
+       * one animation covers both.
+       *
+       * The spacing and the speed are fixed in the stylesheet rather than
+       * measured here: a dash pattern of a set length repeats itself, so every
+       * line carries the same march however long it is, with nothing for this
+       * to compute or hand down.
+       */
       return [
         {
           id: l.id,
@@ -412,6 +534,7 @@ export default function Timeline({
             <g key={e.id}>
               <path className="tl-edge-halo" d={e.d} />
               <path className={`tl-edge-live is-${e.dir}`} d={e.d} />
+              <path className={`tl-edge-spark is-${e.dir}`} d={e.d} />
             </g>
           ))}
         </svg>
@@ -469,6 +592,13 @@ export default function Timeline({
                   height: h,
                 }}
                 onPointerEnter={() => onHover?.(paper.id)}
+                /* Enter alone is not enough once the idle tour exists: waking
+                   it clears whatever it had lit, and a pointer that was already
+                   resting on this card never enters it again, so nothing would
+                   be hovered until it crossed onto another. Move re-asserts it,
+                   and setting the same id twice costs a bail-out, not a
+                   render. */
+                onPointerMove={() => onHover?.(paper.id)}
                 onPointerLeave={() => onHover?.(null)}
                 // Not stopped: the canvas needs this to start a pan, so the
                 // grid can be dragged from anywhere. endDrag decides whether
@@ -490,16 +620,12 @@ export default function Timeline({
                 {/* Starred elsewhere in the app; here it is a marker only,
                     since a card this small has no room for a hit target that
                     would not be caught by the pan the whole canvas listens
-                    for. Sat on the top-left corner rather than in the text: at
-                    this size a badge on the corner is what the eye picks out of
-                    a grid, and the corner is free — the pin marker has the
-                    other one. `is-fav` indents the first line of the title out
-                    from under it. */}
-                {!!paper.favorite && (
-                  <span className="tl-fav" title="Favourite">
-                    ★
-                  </span>
-                )}
+                    for. Drawn in CSS as a flag folded over the top-left corner
+                    — no glyph, so nothing to render badly at eight pixels —
+                    and empty on purpose: the card's own tooltip already says
+                    the paper is a favourite. `is-fav` steps the first line of
+                    the title out from under it. */}
+                {!!paper.favorite && <span className="tl-fav" />}
                 <span className="tl-box-title">{paper.title}</span>
                 <span className="tl-box-meta">
                   {/* The year is its own element so it can never be the part

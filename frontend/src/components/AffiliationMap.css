@@ -37,11 +37,18 @@
   display: flex; align-items: center; gap: 6px;
   margin-top: 6px; font-size: 10px; color: var(--text-dim);
 }
+/* The legend takes the same two colours the markers are drawn in, from the
+   tokens rather than from a copy of them: magenta for a place in the library,
+   lime for the one in focus. */
 .am-dot {
   width: 8px; height: 8px;
-  border: 2px solid #4f8ef7; background: rgb(79 142 247 / 0.35);
+  border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
 }
-.am-dot.is-current { border-color: #10b981; background: rgb(16 185 129 / 0.35); }
+.am-dot.is-current {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 35%, transparent);
+}
 .am-legend .am-dot:not(:first-child) { margin-left: 8px; }
 
 .am-expand {
@@ -111,12 +118,12 @@
 
 /* OSM tiles are light. Inverting them gives a dark basemap without depending
    on a metered provider; markers sit outside the tile pane so their colours
-   are unaffected. */
-@media (prefers-color-scheme: dark) {
-  .leaflet-tile-pane {
-    filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
-  }
-}
-:root[data-theme="dark"] .leaflet-tile-pane {
+   are unaffected.
+   
+   Unconditional now. This was written twice, once behind the OS colour scheme
+   and once behind a data-theme attribute nothing sets, from when the app
+   followed whichever scheme the machine was in. It has one theme, so the map
+   has one basemap. */
+.leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
 }

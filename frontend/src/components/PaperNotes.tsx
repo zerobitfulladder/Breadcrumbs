@@ -118,7 +118,7 @@ export default function PaperNotes({ paperId, initialNote = "", onOpenReader }: 
           {highlights.map((h) => (
             <li key={h.id}>
               <div className="pn-hl-head">
-                <span className="pn-swatch" style={{ background: h.color ?? "#fde047" }} />
+                <span className="pn-swatch" style={{ background: h.color ?? "#fcee0c" }} />
                 <button
                   className="pn-page"
                   onClick={() => onOpenReader?.(paperId, h.id)}

@@ -51,13 +51,66 @@
 }
 .tl-edge-live {
   fill: none;
+  stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
   opacity: 0.95;
-  animation: tl-edge-in 160ms ease-out;
+  filter: drop-shadow(0 0 4px currentColor);
+  /* The line and its bloom are the same colour because both read `color`,
+     which is the only reason the stroke goes through `currentColor` here. */
+  /* Two: the fade in when the line appears, then the beat it keeps for as long
+     as the paper stays in focus. The delay hands over as the first ends. */
+  animation: tl-edge-in 160ms ease-out,
+             tl-edge-pulse 2s cubic-bezier(0.37, 0, 0.63, 1) 160ms infinite alternate;
 }
-.tl-edge-live.is-ref  { stroke: var(--link-ref); }
-.tl-edge-live.is-cite { stroke: var(--link-cite); }
+/*
+ * Opacity only, and on the same curve as the cards so the two breathe together.
+ *
+ * The first version animated the blur radius and the stroke width as well,
+ * which is a repaint and a geometry pass per frame per line; with a well-cited
+ * paper in focus that is thirty of them and the beat came apart. Fading the
+ * whole path takes its shadow with it, so the glow still swells and fades,
+ * and opacity is the one property this can ask for that costs nothing.
+ */
+@keyframes tl-edge-pulse {
+  from { opacity: 0.62; }
+  to   { opacity: 1; }
+}
+
+/*
+ * The pulses: a train of short bright segments marching the length of the line.
+ *
+ * A dash 11 long every 37 gives the run of them, evenly spaced whatever the
+ * line measures, and raising stroke-dashoffset walks the pattern back towards
+ * the path's start. The path is always written from the citing paper to the
+ * cited one, so they run cited → citing: into the paper you are hovering when
+ * it is the newer of the two, out of it when it is the older.
+ *
+ * The three numbers are one fact stated twice, and have to be kept that way.
+ * The cycle travels 148, which is four whole 37s, so the pattern lands exactly
+ * where it started and the loop has no seam. 148 over 0.6s is about 250 pixels
+ * a second, the same on every line, since a repeating pattern has no length of
+ * its own to scale against. A train reads faster than a single pulse did at
+ * the same speed, there being that many more things moving, so this sits below
+ * the rate one spark wanted.
+ */
+.tl-edge-spark {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 11 26;
+  filter: drop-shadow(0 0 5px currentColor);
+  animation: tl-edge-spark 0.6s linear infinite;
+}
+.tl-edge-spark.is-ref  { color: var(--link-ref); }
+.tl-edge-spark.is-cite { color: var(--link-cite); }
+@keyframes tl-edge-spark {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: 148px; }
+}
+.tl-edge-live.is-ref  { color: var(--link-ref); }
+.tl-edge-live.is-cite { color: var(--link-cite); }
 
 /* Legend for the two edge colours. Only worth screen space while edges are
    actually coloured, so it appears with the focus. */
@@ -93,14 +146,42 @@
   text-align: left;
   font: inherit;
   color: var(--text);
-  background: var(--surface-2);
+  /*
+   * Status is a wash across the card as well as a colour on its edge. A 1px
+   * border is a lot to ask the eye to pick out over a grid of a hundred cards,
+   * and the tint answers "how far have I got with this" at a glance instead of
+   * a squint.
+   *
+   * `--tint` defaults to the surface it is mixed into, so a card with no status
+   * worth colouring comes out exactly as it did before, and `--base` follows
+   * the hover, so the lift survives the tint rather than being flattened by it.
+   * The plain declaration first is the fallback for a browser without
+   * color-mix, which would otherwise drop the background entirely.
+   */
+  --base: var(--surface-2);
+  --tint: var(--base);
+  /* What the outline and the pulse are drawn in. A card with no status to show
+     is lit by the strong border instead, since --tint is the surface there and
+     would light it in nothing. */
+  --lit: var(--border-strong);
+  background: var(--base);
+  background: color-mix(in oklab, var(--tint) 26%, var(--base));
   border: 1px solid var(--border);
   cursor: pointer;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+  /* A card lit from inside, in --lit and not --tint.
+     
+     The two were briefly the same variable and are different jobs. --tint is
+     the wash across the card, which unread has none of and should have none
+     of; --lit is the colour the card gives off. Lighting by the wash meant an
+     unread card glowed the colour of the page, so it alone sat flat while
+     everything around it was lit. It gives off the palette's muted violet
+     instead: quieter than a status neon, which is what unread is, but the same
+     kind of object. */
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18), 0 0 14px -6px var(--lit);
   will-change: transform;
   transition: opacity 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
 }
-.tl-box:hover { background: var(--surface-3); }
+.tl-box:hover { --base: var(--surface-3); }
 
 /* Focus mode: everything unrelated recedes, the paper and its citations lift. */
 .tl-box.is-dimmed {
@@ -109,8 +190,17 @@
 }
 /* Neither state recolours the border: that colour carries reading status and
    has to stay readable whatever else is going on. */
+.tl-box:hover { box-shadow: 0 1px 2px rgb(0 0 0 / 0.18), 0 0 22px -6px var(--lit); }
+/* Wired to the paper in focus, and lit in its own colour like everything else.
+ *
+ * The ring used to be the accent, on the reasoning that being connected is one
+ * fact however many cards it is true of. But it put a magenta edge on cards
+ * that are cyan or lime the rest of the time, which is the status colour
+ * reading as a lie for as long as the pointer is down the row. It is not needed
+ * for the distinction either: focus mode drops every unconnected card to a
+ * sixth of its opacity, so what marks a neighbour is that it is still bright. */
 .tl-box.is-linked {
-  box-shadow: 0 0 0 1px var(--accent-soft), 0 2px 8px rgb(0 0 0 / 0.3);
+  box-shadow: 0 0 0 1px var(--lit), 0 0 20px -5px var(--lit), 0 2px 8px rgb(0 0 0 / 0.3);
   z-index: 1;
 }
 /*
@@ -128,16 +218,49 @@
  * borrow the border's, and the border's colour is the reading status.
  */
 .tl-box.is-active {
-  background: var(--surface-3);
-  outline: 2px solid var(--border-strong);
+  --base: var(--surface-3);
+  outline: 2px solid var(--lit);
   outline-offset: 0;
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
   z-index: 2;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.5), 0 0 22px -5px var(--lit);
 }
-.tl-box.status-queued.is-active  { outline-color: #3b82f6; }
-.tl-box.status-reading.is-active { outline-color: #a855f7; }
-.tl-box.status-skimmed.is-active { outline-color: #f59e0b; }
-.tl-box.status-read.is-active    { outline-color: #10b981; }
+/*
+ * The card in focus breathes, and it does it by fading a second glow in and
+ * out on top of the first rather than by animating the first.
+ *
+ * There is no frame rate to turn up: a CSS animation already runs at whatever
+ * the display does. What decides whether it looks like that is which property
+ * is moving. A box-shadow has to be repainted every frame, on the main thread,
+ * behind everything else the grid is doing; opacity is handed to the
+ * compositor and costs a fraction of it. So the bright end of the pulse is
+ * drawn once, on a layer of its own, and only its opacity moves.
+ *
+ * Two keyframes and `alternate`, not three and a loop: with a 0/50/100 cycle
+ * the easing applies twice, once into the middle and once out, so the beat
+ * lands flat at three points instead of one and reads as a stutter. The curve
+ * is a sine, which dwells less at the extremes than the default ease-in-out.
+ */
+.tl-box.is-active::before {
+  content: "";
+  position: absolute;
+  inset: -2px;                 /* out to the far side of the outline */
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--lit) 55%, #ffffff),
+    0 0 40px -2px var(--lit);
+  opacity: 0;
+  animation: tl-box-pulse 2s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+}
+@keyframes tl-box-pulse {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* Stillness for anyone who asked for it. The overlay stays, at rest, at half
+   the strength it would otherwise reach. */
+@media (prefers-reduced-motion: reduce) {
+  .tl-box.is-active::before { animation: none; opacity: 0.5; }
+  .tl-edge-spark { animation: none; opacity: 0; }
+}
 .tl-box {
   /* Cards are not dragged any more — a card's column is its interval — so the
      pointer says "click", not "grab". */
@@ -198,11 +321,21 @@
    but a heavier left edge, reading as a double border. Both are gone; if the
    shelf is worth showing on a card it needs a mark of its own, not a border
    this rule overwrites. */
+/* The colour is named once and the border takes it from there, so the edge and
+   the wash can never drift apart. Reading order runs cool to warm to done:
+   cyan queued, violet reading, yellow skimmed, lime read. Unread sets no tint: it is the ground the
+   others are read against, and a grid where every card is coloured says as
+   little as one where none is. Archived sets none either — its grey would only
+   mud the card, and the strikethrough and the fade already mark it. */
 .tl-box.status-unread   { border-color: var(--border); }
-.tl-box.status-queued   { border-color: #3b82f6; }
-.tl-box.status-reading  { border-color: #a855f7; }
-.tl-box.status-skimmed  { border-color: #f59e0b; }
-.tl-box.status-read     { border-color: #10b981; }
+.tl-box.status-queued   { --tint: #05a9c4; --lit: var(--tint); border-color: var(--tint); }  /* CYAN_MID */
+.tl-box.status-reading  { --tint: #b967ff; --lit: var(--tint); border-color: var(--tint); }  /* VIOLET_BRIGHT */
+.tl-box.status-skimmed  { --tint: #e0c020; --lit: var(--tint); border-color: var(--tint); }  /* YELLOW_MID */
+/* The palette's lime sits at 75°, which the eye reads as yellow-green, and next
+   to a gold skimmed card it read as another yellow. Carried a third of the way
+   towards the palette's own cyan it lands at 102°, which is green, without
+   bringing in a hue from outside the set. */
+.tl-box.status-read     { --tint: #a4f680; --lit: var(--tint); border-color: var(--tint); }  /* LIME_BRIGHT → CYAN_BRIGHT */
 .tl-box.status-archived { border-color: var(--border); opacity: 0.55; }
 .tl-box.status-archived .tl-box-title { text-decoration: line-through; text-decoration-thickness: 1px; }
 /* "This one you can actually read right now." Filled rather than outlined, so
@@ -215,6 +348,7 @@
   font-size: 8.5px; line-height: 1.5; letter-spacing: 0.04em; font-weight: 600;
   color: var(--ok);
   opacity: 0.55;
+  text-shadow: 0 0 6px var(--ok);
   pointer-events: none;
 }
 /* Lifts only where the card already has your attention. */
@@ -225,17 +359,25 @@
    reader themself singled out, and the point of it is to be findable in a grid
    of a hundred cards, at a glance and at any zoom.
 
-   It straddles the top-left corner: half on the card, half over the edge, so it
-   reads as a badge pinned to the card rather than as part of the title. The
-   shadow is what keeps it legible over the overhang, where it sits on the
-   canvas rather than on the card. */
+   A flag folded over the top-left corner, not a star. A ★ here is a font glyph
+   whose shape is whatever the system decides, and at the size a card allows it
+   arrives soft and uneven, needing a shadow to hold its own — which is what
+   made it look cheap beside a flat, square-cornered card. Two triangles of
+   colour have no such problem: the shape is exact at eight pixels and at forty,
+   it belongs to the same geometry as everything else here, and the star still
+   does the explaining wherever there is room for one — the list, the detail
+   panel, the tooltip. */
 .tl-fav {
   position: absolute;
-  top: -0.26em;
-  left: -0.22em;
-  line-height: 1;
-  color: var(--warn);
-  text-shadow: 0 0 3px var(--surface), 0 1px 2px rgb(0 0 0 / 0.7);
+  /* The corner of the padding box, which is the inside of the border: the flag
+     is folded into the frame rather than laid on top of it. */
+  top: 0;
+  left: 0;
+  background: var(--warn);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  /* drop-shadow follows the clipped triangle; box-shadow would bloom the
+     square the clip was cut from. */
+  filter: drop-shadow(0 0 5px var(--warn));
   pointer-events: none;
   z-index: 1;
 }
@@ -277,14 +419,17 @@
 /* The sort key, so it leads and is legible at this size. */
 .tl-box .tl-box-year { font-weight: 700; font-size: 1.05em; color: var(--text); }
 .tl-box .tl-pdf { font-size: 0.8em; }
-/* Set off the title size rather than the card's own font, which does not
-   change with the zoom — so the badge grows with the card the way the text
-   does. Well above the title, since it has to carry at a glance, with a floor
-   below which a star stops reading as a star. */
-.tl-box .tl-fav { font-size: max(10px, calc(var(--title-font, 9.5px) * 1.7)); }
-/* The badge overhangs the corner but still covers the start of the first line,
-   so that line alone steps aside. Roughly the width left sitting on the card. */
-.tl-box.is-fav .tl-box-title { text-indent: calc(var(--title-font, 9.5px) * 1.5); }
+/* Sized off the title rather than the card's own font, which the zoom does not
+   change — so the flag grows with the card the way the text does. The floor is
+   where a triangle stops being a triangle. */
+.tl-box .tl-fav {
+  width: max(11px, calc(var(--title-font, 9.5px) * 1.2));
+  height: max(11px, calc(var(--title-font, 9.5px) * 1.2));
+}
+/* The flag covers the start of the first line, so that line alone steps aside
+   — less than the flag is wide, because by the height of the text the diagonal
+   has already fallen back towards the corner. */
+.tl-box.is-fav .tl-box-title { text-indent: calc(var(--title-font, 9.5px) * 0.85); }
 
 /* Interval headings above each five-year column. */
 .tl-bins { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
