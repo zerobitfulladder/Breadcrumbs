@@ -30,6 +30,17 @@ If you do run it, keep a copy of `library.db` before pulling.
 runs. For development, `dev` runs the backend and Vite with hot reload on both;
 open http://localhost:5173.
 
+To read without a terminal, `./breadcrumbs shortcut` adds two entries to the
+app menu (rofi, GNOME, KDE, anything that reads `.desktop` files).
+**Start Breadcrumbs** starts the server in the background if it is not running,
+rebuilding first if the frontend changed, and opens it in your browser. **Stop
+Breadcrumbs** stops it. Either one reports through a desktop notification when
+something goes wrong. From a terminal they are `./breadcrumbs open` and
+`./breadcrumbs stop`, and the server's output is in
+`$XDG_RUNTIME_DIR/breadcrumbs/server.log`. The entries hold this checkout's
+path, so re-run `shortcut` after moving it; `shortcut --remove` takes them out.
+Stop the background server before `dev`, which needs the same port.
+
 `./breadcrumbs --help` lists every command, and each takes `--help` of its own.
 Commands that serve take `--host` and `--port`; `HOST`, `PORT` and `PAGES` are
 read from the environment too.

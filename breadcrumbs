@@ -10,24 +10,41 @@ is `install`, which is what creates the environments the rest depends on.
 from __future__ import annotations
 
 import argparse
+import fcntl
+import http.client
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
+import tempfile
 import time
+import urllib.request
+import webbrowser
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+SCRIPT = Path(__file__).resolve()
+ROOT = SCRIPT.parent
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
 DIST = FRONTEND / "dist"
 PAGES = Path(os.environ.get("PAGES", "site"))
+ICON = FRONTEND / "public" / "favicon.svg"
 
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = os.environ.get("PORT", "8000")
 
 UV = ["uv", "run", "--project", str(BACKEND)]
+
+# Where `open` leaves the background server's pid and output. The runtime
+# directory is emptied at logout, so a pid read from it cannot be one left over
+# from an earlier session and since handed to some other program.
+RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / "breadcrumbs"
+PIDFILE = RUNTIME / "server.pid"
+LOG = RUNTIME / "server.log"
+
+APPLICATIONS = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "applications"
 
 
 class Failed(SystemExit):
@@ -45,6 +62,77 @@ def run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None =
 def need(tool: str, why: str) -> None:
     if shutil.which(tool) is None:
         raise Failed(f"{tool} is not installed, and {why}.")
+
+
+def notify(message: str, *, urgent: bool = False) -> None:
+    """Show a desktop notification, where there is anything to show it."""
+    if shutil.which("notify-send") is None:
+        return
+    urgency = ["--urgency=critical"] if urgent else []
+    try:
+        subprocess.run(
+            ["notify-send", "--app-name=Breadcrumbs", f"--icon={ICON}", *urgency,
+             "Breadcrumbs", message],
+            check=False, timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def tell(args: argparse.Namespace, message: str) -> None:
+    """Print a result, and with --notify show it on the desktop as well."""
+    print(message)
+    if getattr(args, "notify", False):
+        notify(message)
+
+
+def listening(host: str, port: str) -> bool:
+    """Whether anything at all accepts connections on host:port."""
+    try:
+        with socket.create_connection((host, int(port)), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def serving(host: str, port: str) -> bool:
+    """Whether Breadcrumbs, and not just anything, answers on host:port."""
+    try:
+        with urllib.request.urlopen(f"http://{host}:{port}/api/settings", timeout=2) as response:
+            return response.status == 200
+    except (OSError, http.client.HTTPException):
+        return False
+
+
+def background_pid() -> int | None:
+    """The pid of the server `open` started, if it is still running."""
+    try:
+        pid = int(PIDFILE.read_text())
+        os.kill(pid, 0)
+    except (OSError, ValueError):
+        return None
+    # Belt and braces over the runtime directory: a server killed from outside
+    # leaves its pid file behind, and `stop` signalling whatever took the pid
+    # next would be a nasty surprise. Only checkable where there is a /proc.
+    if Path("/proc/self").is_dir():
+        try:
+            if os.fsencode(str(SCRIPT)) not in Path(f"/proc/{pid}/cmdline").read_bytes():
+                return None
+        except OSError:
+            return None
+    return pid
+
+
+def claim_port(host: str, port: str) -> None:
+    """Stop before starting a server, and say why, if the port is taken."""
+    if not listening(host, port):
+        return
+    if background_pid() is not None:
+        raise Failed(
+            f"Breadcrumbs is already running in the background on port {port}.\n"
+            "Stop it first: ./breadcrumbs stop"
+        )
+    raise Failed(f"Port {port} is already in use.")
 
 
 # --- commands ---------------------------------------------------------------
@@ -90,6 +178,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
     """Serve the existing build from the backend alone."""
     if not (DIST / "index.html").is_file():
         raise Failed("No bundle yet. Run: ./breadcrumbs build")
+    claim_port(args.host, args.port)
     print(f"Breadcrumbs on http://{args.host}:{args.port}")
     run([*UV, "uvicorn", "backend.api:app", "--host", args.host, "--port", str(args.port)])
 
@@ -100,8 +189,122 @@ def cmd_run(args: argparse.Namespace) -> None:
     cmd_serve(args)
 
 
+def start_in_background(args: argparse.Namespace) -> None:
+    """Start the server unless it is already answering, and wait until it does."""
+    if serving(args.host, args.port):
+        return
+    if background_pid() is not None:
+        # Started by an earlier `open` that gave up waiting for it. A second
+        # server would only fail to bind.
+        def alive() -> bool:
+            return background_pid() is not None
+    elif listening(args.host, args.port):
+        raise Failed(f"Port {args.port} is in use by something other than Breadcrumbs.")
+    else:
+        with LOG.open("w") as log:
+            # `run` rather than uvicorn directly, so a checkout changed since
+            # the last build is rebuilt first. Its own session, so it outlives
+            # this command and the launcher that ran it, and so `stop` can
+            # signal the whole group: this script, uv, and uvicorn.
+            server = subprocess.Popen(
+                [sys.executable, str(SCRIPT), "run", "--host", args.host, "--port", str(args.port)],
+                cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                start_new_session=True, env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            )
+        PIDFILE.write_text(str(server.pid))
+
+        def alive() -> bool:
+            return server.poll() is None
+
+    deadline = time.monotonic() + 60
+    while not serving(args.host, args.port):
+        if not alive():
+            PIDFILE.unlink(missing_ok=True)
+            raise Failed(f"Breadcrumbs stopped while starting. Its output is in {LOG}")
+        if time.monotonic() > deadline:
+            raise Failed(f"Breadcrumbs has not answered after a minute. Its output is in {LOG}")
+        time.sleep(0.3)
+
+
+def cmd_open(args: argparse.Namespace) -> None:
+    """Open Breadcrumbs in the browser, starting it in the background if it is not running."""
+    RUNTIME.mkdir(parents=True, exist_ok=True)
+    # Two clicks in quick succession would otherwise both find nothing running
+    # and both start a server. The pid file would then name only the second,
+    # which exits at once on the taken port, leaving `stop` blind to the first.
+    # Serialised, the second waits here and then finds the first one answering.
+    with (RUNTIME / "open.lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        start_in_background(args)
+
+    url = f"http://{args.host}:{args.port}"
+    if not webbrowser.open(url):
+        raise Failed(f"Could not start a browser. Breadcrumbs is on {url}")
+    print(f"Breadcrumbs on {url}")
+
+
+def cmd_stop(args: argparse.Namespace) -> None:
+    """Stop the server that `open` started in the background."""
+    pid = background_pid()
+    PIDFILE.unlink(missing_ok=True)
+    if pid is None:
+        tell(args, "Breadcrumbs was not running in the background.")
+        return
+
+    def alive() -> bool:
+        try:
+            os.killpg(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+
+    os.killpg(pid, signal.SIGTERM)
+    deadline = time.monotonic() + 10
+    while alive() and time.monotonic() < deadline:
+        time.sleep(0.2)
+    if alive():
+        os.killpg(pid, signal.SIGKILL)
+    tell(args, "Breadcrumbs stopped.")
+
+
+def cmd_shortcut(args: argparse.Namespace) -> None:
+    """Add app menu entries that open and stop Breadcrumbs.
+
+    They hold this checkout's path, so run it again after moving the checkout.
+    """
+    entries = {
+        APPLICATIONS / "breadcrumbs.desktop":
+            ("Start Breadcrumbs", "Open your library, starting it if needed", "open"),
+        APPLICATIONS / "breadcrumbs-stop.desktop":
+            ("Stop Breadcrumbs", "Stop the Breadcrumbs server running in the background", "stop"),
+    }
+    if args.remove:
+        for path in entries:
+            if path.exists():
+                path.unlink()
+                print(f"removed {path}")
+        return
+
+    APPLICATIONS.mkdir(parents=True, exist_ok=True)
+    for path, (name, comment, command) in entries.items():
+        # --notify because a launcher has no terminal: without it a failure,
+        # or stop's result, would be printed to nowhere.
+        path.write_text(
+            "[Desktop Entry]\n"
+            "Type=Application\n"
+            f"Name={name}\n"
+            f"Comment={comment}\n"
+            f'Exec="{SCRIPT}" {command} --notify\n'
+            f"Icon={ICON}\n"
+            "Terminal=false\n"
+            "Categories=Education;\n"
+        )
+        print(f"wrote {path}")
+
+
 def cmd_dev(args: argparse.Namespace) -> None:
     """Backend and Vite together, with reload on both."""
+    claim_port(args.host, args.port)
     print(f"backend  http://{args.host}:{args.port}")
     print("frontend http://localhost:5173   <- open this one")
     if (PAGES / "index.html").is_file():
@@ -141,6 +344,7 @@ def cmd_dev(args: argparse.Namespace) -> None:
 
 def cmd_dev_backend(args: argparse.Namespace) -> None:
     """Backend only, with reload."""
+    claim_port(args.host, args.port)
     run([*UV, "uvicorn", "backend.api:app", "--host", args.host, "--port", str(args.port),
          "--reload", "--reload-dir", str(BACKEND / "src")])
 
@@ -256,6 +460,15 @@ def build_parser() -> argparse.ArgumentParser:
     add("run", cmd_run, "build, then serve everything from the backend", serves=True)
     add("serve", cmd_serve, "serve the existing build, no rebuild", serves=True)
 
+    notify_help = "also report through a desktop notification, for launchers with no terminal"
+    opener = add("open", cmd_open, "open in the browser, starting in the background if needed",
+                 serves=True)
+    opener.add_argument("--notify", action="store_true", help=notify_help)
+    stop = add("stop", cmd_stop, "stop the server that open started")
+    stop.add_argument("--notify", action="store_true", help=notify_help)
+    shortcut = add("shortcut", cmd_shortcut, "add Start Breadcrumbs and Stop Breadcrumbs to the app menu")
+    shortcut.add_argument("--remove", action="store_true", help="take them out again")
+
     build = add("build", cmd_build, "build the frontend bundle if it is stale")
     build.add_argument("--force", action="store_true", help="rebuild even if unchanged")
 
@@ -288,6 +501,8 @@ def main() -> None:
         args.fn(args)
     except Failed as exc:
         if isinstance(exc.code, str):
+            if getattr(args, "notify", False):
+                notify(exc.code, urgent=True)
             print(exc.code, file=sys.stderr)
             raise SystemExit(1) from None
         raise
