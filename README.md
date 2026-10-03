@@ -8,7 +8,11 @@ Papers are added one at a time, by you. Adding one records the identifiers of
 everything it cites but creates no other papers; when you later add one of
 those, the link appears on its own.
 
-![The grid, with one paper pinned and its references drawn across the columns](docs/grid.png)
+![Left alone, the grid lights one paper at a time: magenta lines to the work it cites, cyan to the work that cites it](docs/trail.gif)
+
+**[Watch the 90-second tour](https://youtu.be/z0K-n6V5vAs)**: the grid, a paper
+and its author, Bread on the library, then reading. It covers highlighting,
+asking about a passage, and Bread marking the page itself.
 
 ## Status
 
@@ -73,6 +77,8 @@ Optional:
 
 ## The grid
 
+![The grid, with the pointer on one paper and its links drawn across the columns](docs/grid.png)
+
 Every paper on one screen, in fixed columns of N years. A card's column depends
 on its year alone, so nothing moves when a panel opens or a paper is selected.
 
@@ -81,8 +87,13 @@ on its year alone, so nothing moves when a panel opens or a paper is selected.
 - Newest at the top within a column.
 - Scroll to zoom, drag to pan, middle-click a card to open it in its own tab.
 
-Hovering or pinning a paper draws its links: orange for references, violet for
-papers that cite it. Nothing is drawn at rest.
+Hovering or pinning a paper draws its links: magenta to the papers it
+references, cyan to the papers that cite it. The papers it links to are lit
+in the list on the left as well.
+
+Left alone for fifteen seconds, the grid tours itself. It lights a paper on
+screen as though hovered, then another every three seconds, and any input stops
+it. It holds off while a paper or author is open in the side panel.
 
 ## Panels
 
@@ -90,7 +101,8 @@ papers that cite it. Nothing is drawn at rest.
 count. Below it, a map of author affiliations for whatever is in focus.
 
 **Right.** The selected paper: status, authors, DOI, abstract, your note, its
-marked passages, and two tabs. The first is the full reference list, with a
+marked passages, and two tabs. The note renders as Markdown with LaTeX;
+double-click it to edit the source. The first is the full reference list, with a
 filter for the ones you do not hold; the second is the papers in your library
 that cite it. Papers you do
 not have can be previewed in place without saving anything.
@@ -135,16 +147,19 @@ There is no pirated-source integration.
 
 ## Reading
 
-![The reader: the assistant marking passages, with its reasoning beside them](docs/reader.png)
+![The reader: Bread has marked the passages that carry the argument, each with a note, and explains its choices beside them](docs/reader.png)
 
-The reader opens in its own tab: PDF on the left, notes and the assistant on the
-right.
+The reader opens in its own tab: PDF on the left, and on the right two tabs,
+your notes and Bread.
 
-- Select text to highlight it, attach a note, or send it to the assistant.
+- Select text to highlight it, attach a note, or **Add to context** to hand
+  the passage to Bread.
 - **Box** in the toolbar draws a rectangle instead, for scanned PDFs with no
   text layer. It is offered automatically when a page has no text.
 - Hovering a highlight shows its note.
-- Notes render as Markdown with LaTeX; double-click to edit the source.
+- The Notes tab holds your note on the paper, the PDF's own sections, and
+  every highlight. Click one to jump to it.
+- Ctrl-scroll zooms the page. **Invert** darkens it for reading at night.
 
 Highlights are stored as fractions of the page with the page size alongside, so
 they survive re-downloading the PDF and render at any zoom.
@@ -161,10 +176,19 @@ under an old id resolve to it rather than recreating the duplicate.
 
 ## The assistant
 
-One assistant with every capability as a tool. It reads your papers, authors,
-links and notes, searches the web, reads the open PDF, and writes notes,
-highlights, links, reading statuses and author homepages. It cannot add papers.
-It proposes one and you decide.
+Bread: one assistant with every capability as a tool. Tap Shift twice anywhere
+to open it. In the reader it is the second tab, and the same shortcut switches
+to it.
+
+It reads your papers, authors, links and notes, searches the web, and reads
+the open PDF. It writes:
+
+- notes, highlights and links
+- reading statuses
+- author homepages, biographies and portraits
+- PDFs, attached from a URL
+
+It cannot add papers. It proposes one and you decide.
 
 Tool calls stream into the conversation as they happen, so a wrong action can be
 caught while it runs. SQL access is read-only through a separate connection, not
@@ -250,6 +274,8 @@ backend/src/backend/
   pdftext.py    page text, outline, quote to rectangles
   ai/           agent loop, tools, skills
   api.py        HTTP routes
+demo/           the tour video, the GIF and the screenshots above, recorded
+                from the live app (see demo/README.md)
 frontend/src/
   api.ts                    typed client, and the static-export reader
   components/Timeline       the binned grid

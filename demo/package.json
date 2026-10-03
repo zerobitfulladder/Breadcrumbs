@@ -1,0 +1,14 @@
+{
+  "name": "breadcrumbs-demo",
+  "private": true,
+  "type": "module",
+  "description": "Records a scripted tour of Breadcrumbs as a video.",
+  "scripts": {
+    "record": "node record.mjs",
+    "gif": "node record.mjs --tour trail --slow 1 --size 1280x720 --out ../docs/trail.gif",
+    "stills": "node record.mjs --tour stills --no-video --out ../docs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}
