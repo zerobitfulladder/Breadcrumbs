@@ -236,6 +236,7 @@ def test_claims_about_a_paper_without_citations_are_caught():
     assert citations.attributes_without_citing("They used p = 4, per Appendix B.", [])
     assert citations.attributes_without_citing("The authors report 1.36% error.", [])
     assert citations.attributes_without_citing("As Table 2 shows, it converges.", [])
+    assert citations.attributes_without_citing('The claim (p. 1): "Here we demonstrate it."', [])
     # Explanation in the assistant's own voice is not a claim about a paper.
     assert not citations.attributes_without_citing(
         "Backpropagation needs symmetric weights, which is hard to justify biologically.", []

@@ -196,13 +196,17 @@ ATTRIBUTION = re.compile(
     r"\b(?:the|this|that) (?:paper|authors?|study|article|work|preprint)\b"
     r"|\b(?:they|authors) (?:report|use|show|find|found|state|propose|define|train|set|"
     r"measure|argue|claim|note|observe|conclude|demonstrate|introduce)\w*"
-    r"|\b(?:appendix|section|table|figure|fig\.|eq\.|equation)\s*\(?[a-z]?\d",
+    r"|\b(?:appendix|section|table|figure|fig\.|eq\.|equation)\s*\(?[a-z]?\d"
+    # A page reference: "(p. 1)", "pp. 3-4", "page 5".
+    r"|\bp{1,2}\.\s*\d|\bpages?\s+\d",
     re.I,
 )
 
 
 _NEGATION = re.compile(r"\b(?:not|no|never|neither|nor|none|nowhere|cannot)\b|n['’]t\b", re.I)
-_SENTENCES = re.compile(r"(?<=[.!?])\s+|\n+")
+#: A sentence ends at . ! or ? before a capital or an opening quote, so "(p. 1)",
+#: "Fig. 2" and "e.g. this" stay whole.
+_SENTENCES = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"“‘(\[])|\n+")
 
 
 def attributes_without_citing(text: str, citations: list[dict[str, Any]]) -> bool:

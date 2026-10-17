@@ -33,7 +33,12 @@ from .. import pdftext
 
 @lru_cache(maxsize=1)
 def app_version() -> str | None:
-    """The checkout's commit, with "+dirty" when it has uncommitted edits."""
+    """The checkout's commit, with "+dirty" when the app's code has uncommitted edits.
+
+    Only backend/ and frontend/ count. A regenerated screenshot or an edited
+    README changes nothing the server does, and marking every answer dirty
+    for it would make the mark meaningless.
+    """
     root = Path(__file__).resolve().parents[4]
     try:
         commit = subprocess.run(
@@ -41,7 +46,8 @@ def app_version() -> str | None:
             capture_output=True, text=True, timeout=5, check=True,
         ).stdout.strip()
         dirty = subprocess.run(
-            ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no"],
+            ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no",
+             "--", "backend", "frontend"],
             capture_output=True, text=True, timeout=5, check=True,
         ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
