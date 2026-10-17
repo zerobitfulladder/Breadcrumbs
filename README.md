@@ -8,11 +8,29 @@ Papers are added one at a time, by you. Adding one records the identifiers of
 everything it cites but creates no other papers; when you later add one of
 those, the link appears on its own.
 
+**Bread**, the research assistant built in, reads with you, and is built to be
+checkable:
+
+- **Checked quotes.** It may explain from what the model knows, but when it says
+  what a paper says, it quotes the paper. The server finds every quote word for
+  word in the PDF before the answer is shown; it is a text search, not another
+  model. Papers it suggests are checked too: each identifier is looked up and
+  its real title compared with the one given.
+- **Labelled answers.** Each answer says which kind of statement it makes: the
+  paper's, quoted and checked; the library's, from its records; or Bread's own.
+- **A record of every turn.** The model that answered, the prompt it saw and
+  the PDFs it read are kept with their hashes.
+- **Measured behaviour.** How often it is right, cites, and admits a gap is
+  scored on [questions with known answers](eval/README.md).
+
+[How it works](#what-it-says-and-what-it-checked).
+
 ![Left alone, the grid lights one paper at a time: magenta lines to the work it cites, cyan to the work that cites it](docs/trail.gif)
 
-**[Watch the 90-second tour](https://youtu.be/z0K-n6V5vAs)**: the grid, a paper
-and its author, Bread on the library, then reading. It covers highlighting,
-asking about a passage, and Bread marking the page itself.
+**[Watch the two-and-a-half-minute tour](https://youtu.be/z0K-n6V5vAs)**: the
+grid, a paper and its author, Bread on the library, then reading. It covers
+highlighting, asking about a passage, answers whose quotes are checked against
+the PDF, a question the paper cannot answer, and Bread marking the page itself.
 
 ## Status
 
@@ -119,6 +137,11 @@ The same work is often indexed several times under different years: a journal
 article, a book chapter, a later reissue. The Add screen lists every record it
 finds and flags when an earlier one exists, so you can pick before saving.
 
+<img src="docs/proposal.png" width="760" alt="The preview of a paper before it is saved. Four sources answered at once: OpenAlex, Semantic Scholar, Crossref and Unpaywall. They disagree on the year, and the card says which it kept and why, and that the same work is indexed a second time as a preprint. Below are the merged record, the authors with their affiliations and ORCIDs, and the full abstract. Nothing is saved until Add to library is pressed.">
+
+The same preview opens from anywhere a paper you do not hold appears: a
+reference, an author's other work, or a paper Bread suggests.
+
 | Source | Supplies | Key |
 |---|---|---|
 | OpenAlex | identity, authors, institutions, topics, references | free key, advised |
@@ -147,7 +170,7 @@ There is no pirated-source integration.
 
 ## Reading
 
-![The reader: Bread has marked the passages that carry the argument, each with a note, and explains its choices beside them](docs/reader.png)
+![The reader: Bread has marked the passages that carry the argument, each with a note. Its first draft quoted the paper without citations, so it was sent back once, and the answer beside the page now carries three quotes, each found in the PDF](docs/reader.png)
 
 The reader opens in its own tab: PDF on the left, and on the right two tabs,
 your notes and Bread.
@@ -188,7 +211,17 @@ the open PDF. It writes:
 - author homepages, biographies and portraits
 - PDFs, attached from a URL
 
-It cannot add papers. It proposes one and you decide.
+It cannot add papers. It proposes one and you decide: a suggestion is a button
+in the answer, and pressing it opens the paper's [preview](#adding-papers),
+fetched from the sources there and then, with nothing saved until you add it.
+
+Suggestions are checked like quotes. Before the button appears, the identifier
+Bread gave is looked up, and the title it really has is compared with the title
+Bread wrote. One under another paper's identifier loses its button, says what
+that identifier really is, and sends Bread back once to find the right one.
+Making this README is how that check came about: asked for a follow-up to
+feedback alignment, Bread wrote an arXiv id that belongs to a paper on
+Chern-Simons theory.
 
 Tool calls stream into the conversation as they happen, so a wrong action can be
 caught while it runs. SQL access is read-only through a separate connection, not
@@ -198,28 +231,59 @@ a pattern check.
 
 Bread is an assistant, not a retrieval tool: it explains, connects and draws on
 what the model knows, and that is allowed. What is not allowed is for the
-model's own knowledge to look like the paper's. So statements come in kinds,
-and each is labelled for what it is.
+model's own knowledge to look like the paper's. So every answer says which kind
+of statement it is making.
 
-- **What a paper says** carries a quote. Bread writes
-  `[p. 4](cite:12 "the exact words")`, and after it answers the server looks for
-  every quote word for word in that paper's PDF, or its abstract when there is
-  no PDF. No model is involved in the check. Typesetting differences are
-  forgiven: case, punctuation, a word hyphenated across a line, a ligature, TeX
-  for a Greek letter, an ellipsis that skips words. A changed word is not.
-  - A quote that is found becomes a chip showing the page it is really on.
-    Click it to see the passage highlighted in the reader.
-  - One that is not found is struck through, not hidden.
-  - Before the answer is shown, Bread gets one round to correct any quote that
-    was not found, and that round shows in the tool trail.
-- **Bread's own explanation** carries no citation, and the line under each
-  answer says so: "3 quotes found in the paper · the rest is Bread's own
-  explanation".
-- **Library facts** come from tool results and need no quote.
+![Three answers side by side. Asked what the paper reports, Bread quotes it, and the quote is marked found on page 4. Asked which papers build on this one, it answers from the library, labelled as such. Asked to explain from its own knowledge, it does, labelled as its own](docs/three-kinds.png)
 
-A found quote proves the words are in the paper. It does not prove they
-support the sentence they sit in. The chip is there so that judgement is one
-click away.
+| Kind | The line under the answer | What backs it |
+|---|---|---|
+| What a paper says | ✓ 2 quotes found in the paper · the rest is Bread's own explanation | each quote, found word for word in the PDF by the server |
+| What your library says | From your library's records | the library's own database, read through tools |
+| What Bread knows | Bread's own knowledge: nothing was looked up | nothing: it is the model's explanation, marked as such |
+
+#### How a quote is checked
+
+When Bread says what a paper says, it writes the exact words inside a citation
+link. `128` is the paper's id in your library:
+
+```
+[p. 5](cite:128 "gets 1.36% test errors on MNIST after 60 epochs")
+```
+
+After it answers, and before you see it, the server:
+
+1. finds every such link and takes out the paper id and the quoted words
+2. opens that paper's PDF and reads the text of every page
+3. reduces both to lowercase letters and digits, so line breaks, hyphenation,
+   ligatures and punctuation make no difference
+4. searches for the quote, page by page
+
+Found, it becomes a **✓ chip** showing the page it is really on; click it and
+the reader opens at the passage. Not found, it is struck through, not hidden.
+No model takes part: it is a text search, so the same answer checked twice gets
+the same verdict, and a chip cannot be faked by the model writing one.
+
+![The reader opened at the cited passage, highlighted on page 4, beside the answer with its checked quote and the record of the turn: the model that served it, the PDF it read with its hash, the prompt and app version](docs/grounding.png)
+
+What the check cannot do, and what covers it:
+
+- **Plain prose has nothing to search.** If Bread states a fact without a
+  citation, the label calls it Bread's own explanation. An answer that says
+  what a paper says ("the authors report…", "(p. 3)") but cites none of it is
+  sent back once to quote it, and the reader screenshot above shows exactly
+  that: a `check_citations` step, then three checked quotes.
+- **A found quote proves presence, not support.** The words are in the paper;
+  whether they back the sentence is for the reader to judge, one click away.
+  The [evaluation](eval/README.md) measures how often they do.
+- A quote whose words the sentence does not already say is shown before its
+  chip, so a fact never hides inside a tooltip.
+
+When the paper does not contain the answer, Bread says so, and the line under it
+shows the server's own evidence: the literal searches of the paper's text that
+found nothing.
+
+<img src="docs/answer-not-in-paper.png" width="460" alt="Asked for a CIFAR-10 result the paper never reports, Bread says the paper does not report one, and the line reads: searched the paper's text for CIFAR, not found">
 
 Every turn is recorded: the system prompt as sent (with the page you were
 reading), the model the provider reports serving each round, the settings sent,
