@@ -295,6 +295,8 @@ export default function Assistant({
     setActivity([]);
 
     const seen: ToolActivity[] = [];
+    // This turn's text so far: a draft the correction round may replace.
+    const drafts: Turn[] = [];
     let wrote = false;
 
     closeRef.current = chatStream(
@@ -335,10 +337,11 @@ export default function Assistant({
           // Text written alongside a tool call is often the answer itself,
           // with the final message only a closing line. Shown as it arrives,
           // after the steps that led to it, as the stored thread shows it.
-          setTurns((all) => [
-            ...all,
-            { role: "assistant", text: t.text, tools: [...seen], citations: t.citations },
-          ]);
+          const draft: Turn = {
+            role: "assistant", text: t.text, tools: [...seen], citations: t.citations,
+          };
+          drafts.push(draft);
+          setTurns((all) => [...all, draft]);
           seen.splice(0);
           setActivity([]);
         },
@@ -364,6 +367,15 @@ export default function Assistant({
         },
         onProposal: (p) => setProposal(p),
         onCheck: (c) => {
+          // The corrected answer replaces the draft, so the draft's text
+          // leaves the thread and its steps go back into the trail; the
+          // stored thread shows it the same way.
+          if (drafts.length) {
+            const gone = new Set(drafts);
+            setTurns((all) => all.filter((x) => !gone.has(x)));
+            seen.unshift(...drafts.flatMap((x) => x.tools ?? []));
+            drafts.splice(0);
+          }
           // The correction round is part of what happened, so it shows in the
           // tool trail like any other step rather than happening silently.
           seen.push({

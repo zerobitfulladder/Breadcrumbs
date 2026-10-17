@@ -326,8 +326,8 @@ def chat_history(
     from .ai import tools as tool_mod
 
     rows = conn.execute(
-        "SELECT id, role, content, rendered, citations, tool_calls, tool_call_id, tool_name, "
-        "created_at FROM chat_messages WHERE session_id = ? ORDER BY id",
+        "SELECT id, role, content, rendered, citations, superseded, tool_calls, tool_call_id, "
+        "tool_name, created_at FROM chat_messages WHERE session_id = ? ORDER BY id",
         (session_id,),
     ).fetchall()
     # Each answer's record, so a restored thread shows which model wrote it
@@ -368,7 +368,7 @@ def chat_history(
                 pending.append(entry)
                 if call.get("id"):
                     by_call[call["id"]] = entry
-            if (r["content"] or "").strip():
+            if (r["content"] or "").strip() and not r["superseded"]:
                 messages.append(
                     {"id": r["id"], "role": "assistant",
                      # As shown: citations rewritten to their check results.

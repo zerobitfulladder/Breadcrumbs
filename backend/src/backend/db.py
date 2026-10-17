@@ -90,6 +90,8 @@ _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # Literal searches of a paper that found nothing: the evidence behind an
     # answer that says the paper does not contain something.
     ("chat_turns", "absences", "TEXT"),
+    # Text from a draft the correction round replaced: kept, not shown.
+    ("chat_messages", "superseded", "INTEGER"),
 )
 
 # Tables from earlier designs that are no longer part of the app.

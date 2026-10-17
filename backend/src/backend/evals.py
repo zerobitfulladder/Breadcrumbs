@@ -316,6 +316,9 @@ async def _ask(item: dict[str, Any], pid: int) -> dict[str, Any]:
             record["tools"].append(data["name"])
         elif event == "check":
             record["repair"] = data
+            # The corrected answer replaces everything said so far.
+            parts.clear()
+            cited.clear()
         elif event == "text":
             take(data["text"], data.get("citations") or [])
         elif event == "message":

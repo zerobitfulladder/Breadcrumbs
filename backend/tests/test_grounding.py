@@ -345,3 +345,27 @@ def test_suggested_identifiers_are_checked_against_the_title(conn):
     assert "Complex Chern-Simons and Gribov" in rendered
     assert "[Direct Feedback Alignment](paper:1609.01596)" in rendered
     assert len(suggestions.repair_lines(found)) == 1
+
+
+def test_a_restored_thread_shows_the_correction_not_the_draft(conn):
+    from backend import api
+
+    conn.execute("INSERT INTO chat_sessions(id, title) VALUES (1, 't')")
+    rows = [
+        ("user", "What rate?", None, None, None, None),
+        # A draft written beside a tool call, then replaced by the correction.
+        ("assistant", 'It is [p. 1](cite:1 "a rate the paper never states")',
+         '[{"id": "c1", "function": {"name": "show_in_pdf", "arguments": "{}"}}]', None, None, 1),
+        ("tool", '{"ok": true}', None, "c1", "show_in_pdf", None),
+        ("assistant", "The rate is 0.03.", None, None, None, None),
+    ]
+    conn.executemany(
+        "INSERT INTO chat_messages(session_id, role, content, tool_calls, tool_call_id, "
+        "tool_name, superseded) VALUES (1, ?, ?, ?, ?, ?, ?)",
+        rows,
+    )
+    shown = api.chat_history(1, conn)["messages"]
+    answers = [m for m in shown if m["role"] == "assistant"]
+    assert [m["content"] for m in answers] == ["The rate is 0.03."]
+    # The draft's step stays in the trail of the answer that replaced it.
+    assert [t["name"] for t in answers[0]["tools"]] == ["show_in_pdf"]

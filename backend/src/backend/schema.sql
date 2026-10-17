@@ -331,6 +331,9 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     tool_calls TEXT,               -- JSON, when the assistant asked for tools
     tool_call_id TEXT,             -- which call a 'tool' row answers
     tool_name  TEXT,
+    rendered   TEXT,               -- as shown: citations rewritten to their checks
+    citations  TEXT,               -- JSON: each cited quote and its verdict
+    superseded INTEGER,            -- 1: a draft the correction round replaced
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

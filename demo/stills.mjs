@@ -2,11 +2,11 @@
  * The README's screenshots, taken from the live app at 2560x1440.
  *
  *   npm run stills   -> ../docs/grid.png, ../docs/reader.png, ../docs/grounding.png,
- *                       ../docs/three-kinds.png, and one ../docs/answer-*.png per
- *                       kind of answer, plus one declining a question the paper
- *                       cannot answer
+ *                       ../docs/three-kinds.png, ../docs/proposal.png, and one
+ *                       ../docs/answer-*.png per kind of answer, plus one
+ *                       declining a question the paper cannot answer
  *
- * Bread answers for real, five times, so a run costs five answers.
+ * Bread answers for real, six times, so a run costs six answers.
  */
 import { spawnSync } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
@@ -27,6 +27,13 @@ const KINDS = [
 
 const ASK =
   "Highlight the two or three sentences on the first two pages that carry the paper's argument, each with a one-line note.";
+/**
+ * A paper the library lacks, which Bread can only propose. Named, so the card
+ * is the same from run to run, and a journal article, which every source
+ * holds: an arXiv-only paper leaves three of the four source panels empty.
+ */
+const ASK_SUGGEST =
+  "I'd like to read Guerguiev, Lillicrap and Richards' 2017 eLife paper on segregated dendrites. Give it to me as a paper link, with one line on how it builds on feedback alignment.";
 
 /** The app alone, without the stage, scaled down from the 2x render. */
 async function shot(d, path) {
@@ -130,6 +137,52 @@ export default async function stills(d, { context, out }) {
   clips.library = await answerClip(d, ".as-root", join(out, "answer-library.png"));
   await ask(d, ".as-root", ASK_KNOWLEDGE);
   clips.knowledge = await answerClip(d, ".as-root", join(out, "answer-knowledge.png"));
+
+  // A paper Bread can only propose: the preview card, fetched live from the
+  // bibliographic sources, with nothing saved until you choose to add it.
+  await ask(d, ".as-root", ASK_SUGGEST);
+  const proposal = page.locator(".as-root .md-paper").first();
+  if (await proposal.count()) {
+    await d.click(proposal, { after: 400 });
+    // Finished: the save button no longer says Fetching, and the reference
+    // list has its count.
+    await page.waitForFunction(() => {
+      const btn = document.querySelector(".ppc-card button.primary");
+      const refs = document.querySelector(".ppc-card .add-tabs button.is-active");
+      return /Add to library|Update this paper/.test(btn?.textContent ?? "")
+        && /\(\d+\)/.test(refs?.textContent ?? "");
+    }, null, { timeout: 120_000 }).catch(() => undefined);
+    // Semantic Scholar throttles without a key; its panel has a Retry, used
+    // here as a person would, a few times with a pause between.
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      const failed = page.locator(".ppc-card .add-source.status-error");
+      if (!(await failed.count())) break;
+      await page.waitForTimeout(4000 * attempt);
+      await failed.first().locator("button.retry").click();
+      await page.locator(".ppc-card button.retry", { hasText: "Retrying…" })
+        .waitFor({ state: "detached", timeout: 60_000 }).catch(() => undefined);
+    }
+    // The card alone, from its sources through the abstract. It scrolls in a
+    // window this size, so it is photographed in a taller one; the reference
+    // list (its count is in the stats) is left out, and the abstract, which
+    // scrolls in its own box, is shown whole.
+    const size = page.viewportSize();
+    await page.setViewportSize({ width: size.width, height: 2200 });
+    const style = await page.addStyleTag({
+      content: ".ppc-card section:has(.add-tabs) { display: none; } "
+        + ".ppc-card .add-abstract { max-height: none; overflow: visible; }",
+    });
+    await d.stage("hidden", true);
+    await page.waitForTimeout(700);
+    const path = join(out, "proposal.png");
+    await writeFile(path, await page.locator(".ppc-card").screenshot());
+    console.log(`  wrote ${path}`);
+    await d.stage("hidden", false);
+    await style.evaluate((el) => el.remove());
+    await page.setViewportSize(size);
+    await page.waitForTimeout(400);
+    await d.click(page.locator(".ppc-close"), { after: 400 });
+  }
   await d.doubleShift();
 
   // The reader, with Bread marking passages beside the conversation.

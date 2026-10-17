@@ -212,10 +212,24 @@ finding them is what the evaluation is for.
     checked like quotes: the identifier is looked up in OpenAlex and its real
     title compared with the one written. A mismatch loses its button and joins
     the correction round.
+11. **A correct quote failed on a symbol font.** Bread quoted "n = 20" from
+    the feedback-alignment paper, and the check said not found. The quote was
+    right: that Nature PDF sets its maths in a font whose codes land on
+    Latin-1 fractions, so every "=" is stored as "¼" and "[" as "½", and the
+    checker expanded those into the digits "14" and "12". They are now dropped
+    like any other symbol. Three papers in this library carry the encoding.
+12. **The corrected answer appeared under its draft.** The correction round
+    replaced only the final message, so a draft written beside a tool call
+    stayed on screen with its failed quote, above the corrected answer, and its
+    failed citation still counted in the corrected answer's tally. Draft text is
+    now marked superseded when the correction round starts: the panel shows the
+    correction alone, the draft's steps stay in the trail, and the turn's
+    record keeps the draft. The evaluation likewise scores what survives the
+    correction; saved runs predate this and were scored with the drafts in.
 
 **A limit the evaluation shows rather than fixes**
 
-11. **A verified quote can sit under an invented claim.** Asked for the
+13. **A verified quote can sit under an invented claim.** Asked for the
     Forward-Forward goodness threshold, which the paper never states, GPT-5.6
     Luna answered "θ = 2" and cited, verbatim, the sentence that *defines* θ.
     The chip correctly says the quote is in the paper; it cannot say the quote

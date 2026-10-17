@@ -356,6 +356,7 @@ async def _rounds(
     said: list[str] = []
     said_cited: list[dict[str, Any]] = []
     said_suggested: list[dict[str, Any]] = []
+    said_ids: list[int] = []
     misses = 0
 
     def fail(message: str) -> tuple[str, dict[str, Any]]:
@@ -412,9 +413,22 @@ async def _rounds(
                     repaired = True
                     failed = [c for c in everything if c["status"] != citations.VERIFIED]
                     turn.repair = {
-                        "reason": reason, "draft": text, "draft_check": tally, "failed": failed,
-                        "wrong_papers": wrong_papers,
+                        "reason": reason, "draft": "\n\n".join([*said, text]),
+                        "draft_check": tally, "failed": failed, "wrong_papers": wrong_papers,
                     }
+                    # The corrected answer replaces the whole draft, including
+                    # text already shown beside tool calls. Those rows stay in
+                    # the thread, since the model said them, but are marked so
+                    # the panel shows the correction instead of both, and their
+                    # citations leave the corrected answer's tally.
+                    if said_ids:
+                        with db.session() as conn:
+                            conn.execute(
+                                "UPDATE chat_messages SET superseded = 1 WHERE id IN "
+                                f"({','.join('?' * len(said_ids))})",
+                                said_ids,
+                            )
+                    said, said_cited, said_suggested, said_ids = [], [], [], []
                     yield "check", {
                         "phase": "repair", "reason": reason, **tally,
                         "wrong_papers": len(wrong_papers),
@@ -460,10 +474,12 @@ async def _rounds(
                 {"role": "assistant", "content": text, "tool_calls": calls}
             )
             with db.session() as conn:
-                save_message(
+                saved_id = save_message(
                     conn, session_id, "assistant", text, tool_calls=calls,
                     rendered=rendered or None, cited=cited or None,
                 )
+            if text:
+                said_ids.append(saved_id)
 
             for call in calls:
                 fn = call.get("function") or {}
