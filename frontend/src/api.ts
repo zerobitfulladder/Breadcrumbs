@@ -671,6 +671,8 @@ export interface RunRecord {
   }[];
   /** Every tool the turn called, in order. */
   tools_used?: string[];
+  /** Literal searches of a paper's text that found nothing. */
+  absences?: { paper_id: number; query: string }[];
   documents?: { paper_id: number; title?: string; sha256: string; bytes: number }[];
   usage?: Record<string, number>;
   rounds?: number;

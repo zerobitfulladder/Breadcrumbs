@@ -118,7 +118,32 @@ def check(conn: sqlite3.Connection, text: str) -> tuple[str, list[dict[str, Any]
             return chip
         return f"“{_escape(quote)}” {chip}"
 
-    return CITE.sub(replace, source), found
+    return held_papers_plain(conn, CITE.sub(replace, source)), found
+
+
+#: A suggestion link, `[title](paper:identifier)`, which the panel renders as a
+#: button offering to add the paper.
+PAPER_LINK = re.compile(r"\[(?P<label>[^\[\]\n]+)\]\(paper:(?P<ident>[^)\s]+)\)")
+
+
+def held_papers_plain(conn: sqlite3.Connection, text: str) -> str:
+    """Suggestion links to papers already in the library, as plain titles.
+
+    Models sometimes use the suggestion syntax for any paper they mention, so
+    a paper the user holds would be offered as one to add. That misstates the
+    library, which is exactly what labels are for avoiding.
+    """
+    from .. import ids
+
+    def replace(m: re.Match[str]) -> str:
+        ident = m["ident"]
+        row = conn.execute(
+            "SELECT 1 FROM papers WHERE doi = ? OR arxiv_id = ? OR openalex_id = ?",
+            (ids.norm_doi(ident), ids.norm_arxiv(ident), ids.norm_openalex(ident)),
+        ).fetchone()
+        return f"**{m['label']}**" if row else m.group(0)
+
+    return PAPER_LINK.sub(replace, text)
 
 
 def _escape(text: str) -> str:

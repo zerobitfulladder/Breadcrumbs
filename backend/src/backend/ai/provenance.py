@@ -86,6 +86,7 @@ class Turn:
     documents: dict[int, dict[str, Any]] = field(default_factory=dict)
     fetched: dict[str, str] = field(default_factory=dict)
     tools_used: list[str] = field(default_factory=list)
+    absences: list[dict[str, Any]] = field(default_factory=list)
     repair: dict[str, Any] | None = None
 
     # --- observations -------------------------------------------------------
@@ -152,10 +153,11 @@ class Turn:
             return
         conn.execute(
             "UPDATE chat_turns SET status = ?, answer_message_id = ?, responses = ?, "
-            "tools_used = ?, documents = ?, usage = ?, rounds = ?, citations = ?, repair = ?, "
-            "error = ?, finished_at = datetime('now') WHERE id = ?",
+            "tools_used = ?, absences = ?, documents = ?, usage = ?, rounds = ?, citations = ?, "
+            "repair = ?, error = ?, finished_at = datetime('now') WHERE id = ?",
             (
                 status, answer_message_id, json.dumps(self.responses), json.dumps(self.tools_used),
+                json.dumps(self.absences),
                 json.dumps(list(self.documents.values())), json.dumps(self.usage),
                 self.rounds, json.dumps(citations) if citations is not None else None,
                 json.dumps(self.repair) if self.repair else None, error, self.row_id,
@@ -166,7 +168,7 @@ class Turn:
 def load(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     """A stored turn with its JSON columns parsed, for the export."""
     out = dict(row)
-    for key in ("responses", "tools_used", "documents", "usage", "citations", "repair"):
+    for key in ("responses", "tools_used", "absences", "documents", "usage", "citations", "repair"):
         if out.get(key):
             try:
                 out[key] = json.loads(out[key])

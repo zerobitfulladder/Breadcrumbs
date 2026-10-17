@@ -467,6 +467,13 @@ async def _rounds(
 
                 if name in SEARCH_TOOLS and not result.get("error"):
                     misses = 0 if result.get("results") else misses + 1
+                    # A literal search that found nothing is a checked fact
+                    # about the paper's text, worth showing beside an answer
+                    # that says the paper does not contain something.
+                    if name == "search_pdf" and not result.get("results"):
+                        turn.absences.append(
+                            {"paper_id": args.get("paper_id"), "query": args.get("query")}
+                        )
                     if misses >= MISSES_BEFORE_NUDGE:
                         result["note"] = (
                             f"{result.get('note') or ''} That is {misses} searches in a row "

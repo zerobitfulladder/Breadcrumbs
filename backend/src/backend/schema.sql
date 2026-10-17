@@ -359,6 +359,7 @@ CREATE TABLE IF NOT EXISTS chat_turns (
     tools_sha256      TEXT,
     responses         TEXT,          -- JSON: per round, the model and request the provider reports
     tools_used        TEXT,          -- JSON: the tools called, in order
+    absences          TEXT,          -- JSON: literal searches of a PDF that found nothing
     documents         TEXT,          -- JSON: each PDF read, with its SHA-256
     usage             TEXT,          -- JSON: tokens summed over the turn
     rounds            INTEGER,

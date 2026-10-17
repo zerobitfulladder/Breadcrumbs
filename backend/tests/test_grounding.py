@@ -300,3 +300,14 @@ def test_inline_quotes_cannot_inject_markdown(conn):
     text = '[p. 1](cite:1 "the learning rate is set to 0.03 for *every* layer $x$")'
     rendered, _ = citations.check(conn, text)
     assert r"\*every\*" in rendered and r"\$x\$" in rendered
+
+
+def test_suggestion_links_to_held_papers_become_plain_titles(conn):
+    conn.execute("UPDATE papers SET doi = '10.1000/held' WHERE id = 1")
+    text = (
+        "See [Local learning](paper:https://doi.org/10.1000/HELD) and "
+        "[Something new](paper:10.1000/not-held)."
+    )
+    rendered, _ = citations.check(conn, text)
+    assert "**Local learning**" in rendered
+    assert "[Something new](paper:10.1000/not-held)" in rendered

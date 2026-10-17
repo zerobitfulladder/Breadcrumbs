@@ -63,6 +63,19 @@ export default function AnswerRecord({ text, citations, check, run }: Props) {
         <span className="ar-dim">the rest is Bread’s own explanation</span>
       </>
     );
+  } else if (run?.absences?.length) {
+    // An answer that the paper lacks something, beside the server's own
+    // record of searching its text and finding nothing. A literal search, so
+    // it proves the words are absent, not that the idea is.
+    const terms = [...new Set(run.absences.map((a) => a.query).filter(Boolean))].slice(0, 4);
+    summary = (
+      <>
+        <span className="ar-ok">
+          Searched the paper’s text for {terms.map((t) => `“${t}”`).join(", ")}: not found
+        </span>
+        <span className="ar-dim">the rest is Bread’s own explanation</span>
+      </>
+    );
   } else if (repair?.reason === "uncited") {
     // Asked once to quote what it attributed to the paper, and still did not.
     summary = (

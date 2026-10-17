@@ -87,6 +87,9 @@ _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # Which tools a turn called, so an answer can say where it came from: the
     # paper, the library's records, the web, or the model alone.
     ("chat_turns", "tools_used", "TEXT"),
+    # Literal searches of a paper that found nothing: the evidence behind an
+    # answer that says the paper does not contain something.
+    ("chat_turns", "absences", "TEXT"),
 )
 
 # Tables from earlier designs that are no longer part of the app.
