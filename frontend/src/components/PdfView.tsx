@@ -453,18 +453,44 @@ export default function PdfView({
   // Scroll to whatever the assistant is pointing at. Centred rather than
   // scrolled-to-top: a passage in the middle of a page is easier to find when
   // it is in the middle of the view.
+  //
+  // The pages above the target may not have their real height yet: a reveal
+  // can arrive before the document has loaded at all (a citation opened from
+  // another tab), and each page grows from nothing as its canvas renders. So
+  // the target is recomputed for a few seconds and followed only when it
+  // moves, which corrects for layout without fighting a reader who scrolls.
   useEffect(() => {
-    if (!reveal || !scrollRef.current) return;
-    const pageEl = scrollRef.current.querySelector<HTMLElement>(
-      `.pv-page[data-page="${reveal.page}"]`,
-    );
-    if (!pageEl) return;
-
+    const scroller = scrollRef.current;
+    if (!reveal || !scroller) return;
     const target = Array.isArray(reveal.rects) ? reveal.rects[0] : undefined;
-    const offsetInPage = target ? target.y * pageEl.offsetHeight : 0;
-    const top =
-      pageEl.offsetTop + offsetInPage - scrollRef.current.clientHeight / 2 + 40;
-    scrollRef.current.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    let last: number | null = null;
+    let tries = 0;
+    let timer = 0;
+    const follow = () => {
+      const pageEl = scroller.querySelector<HTMLElement>(
+        `.pv-page[data-page="${reveal.page}"]`,
+      );
+      if (pageEl && pageEl.offsetHeight > 0) {
+        // Measured on screen, not with offsetTop: the pages sit inside a
+        // CSS-zoomed box (0.8 at the default 60%), and offsetTop is in
+        // unzoomed pixels while scrolling happens in zoomed ones, which put
+        // every reveal a fifth too far down.
+        const page = pageEl.getBoundingClientRect();
+        const view = scroller.getBoundingClientRect();
+        const offsetInPage = target ? target.y * page.height : 0;
+        const top = Math.max(
+          0,
+          scroller.scrollTop + page.top - view.top + offsetInPage - scroller.clientHeight / 2 + 40,
+        );
+        if (last === null || Math.abs(top - last) > 4) {
+          scroller.scrollTo({ top, behavior: last === null ? "smooth" : "auto" });
+          last = top;
+        }
+      }
+      if (++tries < 16) timer = window.setTimeout(follow, 200);
+    };
+    follow();
+    return () => window.clearTimeout(timer);
   }, [reveal]);
 
   // The browser paints its own selection as a flat box over the full em box of

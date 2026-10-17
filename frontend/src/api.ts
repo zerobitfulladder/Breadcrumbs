@@ -617,6 +617,82 @@ export interface ChatMessage {
   tools?: ToolActivity[];
   interrupted?: boolean;
   created_at?: string;
+  citations?: Citation[];
+  run?: RunRecord | null;
+}
+
+/**
+ * One quote an answer cited, and what the server found when it looked for it.
+ * The answer's text refers to it as `[label](citation:n)`.
+ */
+export interface Citation {
+  n: number;
+  paper_id: number;
+  title?: string;
+  year?: number | null;
+  quote: string;
+  status: "verified" | "not_found" | "unknown_paper" | "too_short" | "no_quote" | "no_source";
+  /** Where a verified quote was found. */
+  where?: "pdf" | "abstract";
+  page?: number;
+  page_claimed?: number;
+  rects?: HighlightRect[];
+  /** The passage as the document has it, which may differ in typography. */
+  matched?: string;
+  checked?: string[];
+}
+
+export interface CitationTally {
+  total: number;
+  verified: number;
+  failed: number;
+  unchecked: number;
+}
+
+/** What produced an answer: the turn's record, as the server kept it. */
+export interface RunRecord {
+  id: number;
+  status: string;
+  provider: string;
+  model: string;
+  route?: string | null;
+  thinking?: string | null;
+  app_version?: string | null;
+  system_sha256?: string;
+  tools_sha256?: string;
+  responses?: {
+    round: number;
+    model?: string;
+    id?: string;
+    provider?: string;
+    finish_reason?: string;
+    sent?: Record<string, unknown>;
+    usage?: Record<string, number>;
+  }[];
+  documents?: { paper_id: number; title?: string; sha256: string; bytes: number }[];
+  usage?: Record<string, number>;
+  rounds?: number;
+  citations?: CitationTally | null;
+  repair?: {
+    /** Quotes that were not found, or claims about a paper with none at all. */
+    reason?: "unverified" | "uncited";
+    draft: string;
+    draft_check: CitationTally;
+    final_check?: CitationTally;
+    failed: Citation[];
+  } | null;
+  started_at?: string;
+  finished_at?: string | null;
+}
+
+export interface PassageStatus {
+  papers_with_pdf: number;
+  papers_stale: number;
+  passages: number;
+  embedded: number;
+  embedder: string | null;
+  chunker: string;
+  model_error: string | null;
 }
 
 export interface ToolActivity {
@@ -632,7 +708,8 @@ export interface ToolActivity {
 export interface ChatHandlers {
   onSession?: (id: number) => void;
   onStart?: (d: { user_message_id: number; model: string }) => void;
-  onText?: (chunk: string) => void;
+  /** Prose written alongside a tool call, with its checked citations. */
+  onText?: (t: { text: string; citations?: Citation[] }) => void;
   onToolCall?: (t: { id: string; name: string; args: Record<string, unknown> }) => void;
   onToolResult?: (r: {
     id: string; name: string; summary: string; is_write: boolean;
@@ -646,7 +723,19 @@ export interface ChatHandlers {
     rects: HighlightRect[];
     quote?: string;
   }) => void;
-  onMessage?: (m: { text: string; rounds: number }) => void;
+  /** Some cited quotes were not found, and the assistant is correcting them. */
+  onCheck?: (c: CitationTally & {
+    phase: "repair";
+    reason: "unverified" | "uncited";
+    failed: { n: number; paper_id: number; quote: string; status: Citation["status"] }[];
+  }) => void;
+  onMessage?: (m: {
+    text: string;
+    rounds: number;
+    citations?: Citation[];
+    check?: CitationTally;
+    run?: RunRecord | null;
+  }) => void;
   onError?: (message: string) => void;
   onDone?: (d: { rounds: number }) => void;
 }
@@ -703,11 +792,12 @@ export function chatStream(
       switch (name) {
         case "session": h.onSession?.(data.session_id as number); break;
         case "start": h.onStart?.(data as never); break;
-        case "text": h.onText?.(data.text as string); break;
+        case "text": h.onText?.(data as never); break;
         case "tool_call": h.onToolCall?.(data as never); break;
         case "tool_result": h.onToolResult?.(data as never); break;
         case "proposal": h.onProposal?.(data as never); break;
         case "reveal": h.onReveal?.(data as never); break;
+        case "check": h.onCheck?.(data as never); break;
         case "message": h.onMessage?.(data as never); break;
         case "error": h.onError?.(data.message as string); break;
         case "done": h.onDone?.(data as never); break;
@@ -1057,6 +1147,18 @@ export const api = {
     request<{ session_id: number }>("/api/chat/sessions", { method: "POST" }),
   chatHistory: (id: number) =>
     request<{ messages: ChatMessage[] }>(`/api/chat/sessions/${id}`),
+  /** A download link for the conversation with its full record. */
+  chatExportUrl: (id: number) => `${BASE}/api/chat/sessions/${id}/export`,
+  locateQuote: (paperId: number, quote: string, page?: number | null) =>
+    request<{ page: number; rects: HighlightRect[]; text: string }>(
+      `/api/papers/${paperId}/locate?${new URLSearchParams({
+        quote,
+        ...(page ? { page: String(page) } : {}),
+      })}`,
+    ),
+  passageStatus: () => request<PassageStatus>("/api/passages/status"),
+  reindexPassages: () =>
+    request<{ status: string }>("/api/passages/index", { method: "POST" }),
   authorLinks: (id: number) =>
     request<{ links: Record<string, AuthorLink> }>(`/api/authors/${id}/links`),
   affiliationMap: (scope: string, id?: number | null) =>

@@ -11,9 +11,12 @@ is stored alongside, so an export can convert back to absolute units.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import sqlite3
 import unicodedata
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +54,34 @@ def join_broken_words(text: str) -> str:
     return re.sub(r"(\w)-\s+(?=[^\W\dA-Z_])", r"\1", text or "")
 
 
+# Greek letters spelled out. A model quoting an equation writes TeX ($\eta$)
+# where the page has the glyph (η); spelling both out makes them the same word.
+# NFKD has already turned the variant forms (ϵ, ϑ, ϕ, µ, math italics) into
+# these by the time this applies.
+_GREEK = str.maketrans({
+    "α": "alpha", "β": "beta", "γ": "gamma", "δ": "delta", "ε": "epsilon",
+    "ζ": "zeta", "η": "eta", "θ": "theta", "ι": "iota", "κ": "kappa",
+    "λ": "lambda", "μ": "mu", "ν": "nu", "ξ": "xi", "ο": "o", "π": "pi",
+    "ρ": "rho", "σ": "sigma", "ς": "sigma", "τ": "tau", "υ": "upsilon",
+    "φ": "phi", "χ": "chi", "ψ": "psi", "ω": "omega",
+})
+
+
+def _mend_math_letters(text: str) -> str:
+    """Undo a common broken text layer: math italics truncated to 16 bits.
+
+    TeX's italic letters live at U+1D400–U+1D7FF. Some PDFs map them with a
+    ToUnicode table that drops the top bit, so an italic l (U+1D459) is
+    extracted as the Hangul syllable 푙 (U+D459), and a quote that types "l"
+    cannot match it. Shifting the range back recovers the letter, which NFKD
+    then turns into a plain one. Real Hangul in that range is changed too, but
+    identically on both sides of a comparison, so matches are unaffected.
+    """
+    return "".join(
+        chr(ord(c) + 0x10000) if "퐀" <= c <= "퟿" else c for c in text
+    )
+
+
 def fold(text: str) -> str:
     """Lowercase alphanumerics only — the form quotes are matched in.
 
@@ -61,9 +92,9 @@ def fold(text: str) -> str:
     that is not a letter or a digit removes all of it at once, and closing the
     gaps is exactly what makes a hyphenated break match the joined word.
     """
-    text = unicodedata.normalize("NFKD", text or "")
+    text = unicodedata.normalize("NFKD", _mend_math_letters(text or ""))
     text = "".join(c for c in text if not unicodedata.combining(c))
-    return re.sub(r"[^a-z0-9]+", "", text.lower())
+    return re.sub(r"[^a-z0-9]+", "", text.lower().translate(_GREEK))
 
 
 def extract_text(path: Path, max_pages: int = MAX_PAGES_SCANNED) -> list[dict[str, Any]]:
@@ -206,6 +237,192 @@ def find_quote(
                 "rects": _merge_by_line(rects, width, height),
             }
     return None
+
+
+@dataclass(frozen=True)
+class _Page:
+    words: list[Any]
+    hay: str
+    owner: list[int]
+    width: float
+    height: float
+
+
+@lru_cache(maxsize=24)
+def _indexed(path: str, mtime_ns: int, size: int) -> tuple[_Page, ...]:
+    """Every page's folded text, kept between calls.
+
+    Checking an answer means locating several quotes in the same few files, and
+    extracting a paper's words costs far more than searching them. The cache is
+    keyed on the file's size and modification time as well as its path, so a
+    replaced PDF is read afresh rather than matched against the old one.
+    """
+    import pymupdf
+
+    out = []
+    with pymupdf.open(path) as doc:
+        for index, page in enumerate(doc):
+            if index >= MAX_PAGES_SCANNED:
+                break
+            words, hay, owner = _page_index(page)
+            out.append(_Page(words, hay, owner, page.rect.width, page.rect.height))
+    return tuple(out)
+
+
+def _pages(path: Path) -> tuple[_Page, ...]:
+    stat = path.stat()
+    return _indexed(str(path), stat.st_mtime_ns, stat.st_size)
+
+
+# An elision inside a quote: "…", "...", "[...]" or "[…]".
+_ELISION = re.compile(r"\s*(?:\[\s*(?:…|(?:\.\s*){3})\s*\]|…|\.{3,})\s*")
+
+#: Folded characters a quote needs before finding it means anything. "we show"
+#: occurs in every paper; a clause or more identifies a passage.
+MIN_QUOTE = 20
+
+
+def quote_segments(quote: str) -> list[str]:
+    """A quote's folded pieces, split where it elides words."""
+    return [s for s in (fold(part) for part in _ELISION.split(quote or "")) if s]
+
+
+# A JSON escape copied out of a tool result: models read page text as JSON, so
+# a line break reaches them as the two characters \n and is sometimes quoted
+# that way. An escape is not content.
+_ESCAPE = re.compile(r"\\[nrt]")
+
+
+def quote_variants(quote: str) -> list[str]:
+    """The quote as written, then with copied escapes read as the spaces they were.
+
+    Both are tried rather than unescaping outright, because TeX in a quote can
+    look like an escape: "\\nu" is a Greek letter, not a line break and "u".
+    """
+    unescaped = _ESCAPE.sub(" ", quote or "")
+    return [quote] if unescaped == quote else [quote, unescaped]
+
+
+def _match_in_order(hay: str, segments: list[str], start: int) -> list[tuple[int, int]] | None:
+    """Spans for each segment in turn, each after the last, the first at `start`."""
+    spans = [(start, start + len(segments[0]))]
+    for seg in segments[1:]:
+        at = hay.find(seg, spans[-1][1])
+        if at == -1:
+            return None
+        spans.append((at, at + len(seg)))
+    return spans
+
+
+def locate_quote(
+    path: Path, quote: str, page_hint: int | None = None
+) -> dict[str, Any] | None:
+    """Find a quote word for word, or report that the document does not say it.
+
+    This is the check behind a citation, so unlike `find_quote` it never settles
+    for part of the passage: every word must be there, in order. The only
+    allowances are the ones that carry no meaning — typesetting, punctuation,
+    case, hyphenation, TeX for a Greek letter — plus an ellipsis, which may skip
+    words but not reorder them. A quote may run from one page onto the next,
+    since a sentence often does.
+
+    Returns the page it starts on, the rectangles to draw there, and the text as
+    the document has it; None when it is not found or too short to identify a
+    passage.
+    """
+    for variant in quote_variants(quote):
+        hit = _locate(path, quote_segments(variant), page_hint)
+        if hit is not None:
+            return hit
+    return None
+
+
+def _locate(
+    path: Path, segments: list[str], page_hint: int | None
+) -> dict[str, Any] | None:
+    if not segments or sum(len(s) for s in segments) < MIN_QUOTE:
+        return None
+
+    pages = _pages(path)
+    order = list(range(len(pages)))
+    if page_hint and 1 <= page_hint <= len(pages):
+        order.remove(page_hint - 1)
+        order.insert(0, page_hint - 1)
+
+    for index in order:
+        page = pages[index]
+        following = pages[index + 1] if index + 1 < len(pages) else None
+        split = len(page.hay)
+        hay = page.hay + (following.hay if following else "")
+
+        at = hay.find(segments[0])
+        while at != -1 and at < split:          # it must begin on this page
+            spans = _match_in_order(hay, segments, at)
+            if spans is not None:
+                return _located(index, page, following, split, spans)
+            at = hay.find(segments[0], at + 1)
+    return None
+
+
+def _located(
+    index: int, page: _Page, following: _Page | None, split: int,
+    spans: list[tuple[int, int]],
+) -> dict[str, Any]:
+    """Turn matched character spans back into words, rectangles and text."""
+    here: list[int] = []
+    after: list[int] = []
+    for a, b in spans:
+        for c in range(a, b):
+            if c < split:
+                here.append(page.owner[c])
+            elif following is not None:
+                after.append(following.owner[c - split])
+
+    import pymupdf
+
+    parts: list[str] = []
+    for words, picked in ((page.words, here), (following.words if following else [], after)):
+        if picked:
+            parts.append(_join_words(words, min(picked), max(picked)))
+    rects = [pymupdf.Rect(*page.words[i][:4]) for i in sorted(set(here))]
+    return {
+        "page": index + 1,
+        "width": page.width,
+        "height": page.height,
+        "text": " ".join(parts),
+        "rects": _merge_by_line(rects, page.width, page.height),
+        "continues": bool(after),
+    }
+
+
+def contains_quote(text: str, quote: str) -> bool:
+    """The same test as `locate_quote`, against plain text such as an abstract."""
+    hay = fold(text)
+    for variant in quote_variants(quote):
+        segments = quote_segments(variant)
+        if not segments or sum(len(s) for s in segments) < MIN_QUOTE:
+            continue
+        at = hay.find(segments[0])
+        while at != -1:
+            if _match_in_order(hay, segments, at) is not None:
+                return True
+            at = hay.find(segments[0], at + 1)
+    return False
+
+
+@lru_cache(maxsize=256)
+def _sha256(path: str, mtime_ns: int, size: int) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def file_sha256(path: Path) -> str:
+    """The file's SHA-256: which exact PDF an answer or an index was built from."""
+    stat = path.stat()
+    return _sha256(str(path), stat.st_mtime_ns, stat.st_size)
 
 
 def _merge_by_line(rects: list[Any], width: float, height: float) -> list[dict[str, float]]:

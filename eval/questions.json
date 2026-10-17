@@ -1,0 +1,1505 @@
+{
+ "format": "breadcrumbs-eval/1",
+ "description": "Questions about nine open-access papers on local and biologically plausible learning rules, with gold answers and evidence quotes located in the stored PDFs. See eval/README.md.",
+ "items": [
+  {
+   "id": "ff-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 128,
+    "doi": "10.48550/arxiv.2212.13345",
+    "arxiv": "2212.13345",
+    "title": "The Forward-Forward Algorithm: Some Preliminary Investigations",
+    "pdf_sha256": "059f700a44f78227bfd8f6219b5460484502985808ff1e23874be4f53b468e4f"
+   },
+   "question": "What MNIST test error does the paper report for the fully connected FF network trained in the supervised way, with the label included in the input and no data augmentation?",
+   "paraphrase": "When the basic version is trained with labels on handwritten digits, with no extra distorted training images, what percentage of test digits does it get wrong?",
+   "answer": "A network with 4 hidden layers of 2000 ReLUs each, fully connected, gets 1.36% test error on MNIST after 60 epochs (doubling the learning rate and training for 40 epochs gives a slightly worse 1.46%).",
+   "must_mention": [
+    [
+     "1.36"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "A network with 4 hidden layers each containing 2000 ReLUs and full connectivity between layers gets 1.36% test errors on MNIST after 60 epochs."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Traps: 1.37% is the unsupervised (hybrid negative data) result, 1.16% the local-receptive-field unsupervised net, 1.31% the recurrent top-down net, 0.64% the jittered (augmented) supervised net, 1.46% the 40-epoch doubled-learning-rate run."
+  },
+  {
+   "id": "ff-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 128,
+    "doi": "10.48550/arxiv.2212.13345",
+    "arxiv": "2212.13345",
+    "title": "The Forward-Forward Algorithm: Some Preliminary Investigations",
+    "pdf_sha256": "059f700a44f78227bfd8f6219b5460484502985808ff1e23874be4f53b468e4f"
+   },
+   "question": "How does FF stop the next hidden layer from trivially telling positive from negative data by using the previous layer's activity?",
+   "paraphrase": "What stops a layer from simply reading off whether the input was real or fake from how strongly the layer below responded?",
+   "answer": "FF normalizes the length of the hidden activity vector (a simple layer normalization) before passing it to the next layer. The length defines that layer's goodness, and only the orientation (the relative activities) is passed on, so the next layer has to learn new features.",
+   "must_mention": [
+    [
+     "normaliz",
+     "normalis"
+    ],
+    [
+     "length",
+     "orientation",
+     "relative activities"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 3,
+     "quote": "To prevent this, FF normalizes the length of the hidden vector before using it as input to the next layer"
+    },
+    {
+     "page": 3,
+     "quote": "The length is used to define the goodness for that layer and only the orientation is passed to the next layer."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Footnote 5 adds that FF's layer normalization does not subtract the mean before dividing by the length."
+  },
+  {
+   "id": "ff-3",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 128,
+    "doi": "10.48550/arxiv.2212.13345",
+    "arxiv": "2212.13345",
+    "title": "The Forward-Forward Algorithm: Some Preliminary Investigations",
+    "pdf_sha256": "059f700a44f78227bfd8f6219b5460484502985808ff1e23874be4f53b468e4f"
+   },
+   "question": "What does the paper report about separating FF's positive and negative phases in time, i.e. doing many updates on positive data and then many on negative data (as in sleep)?",
+   "paraphrase": "Does it work to train on the real data and on the fake data at separate times, like being awake and asleep, instead of interleaving them?",
+   "answer": "It has not been shown to work. An earlier draft reported that it worked on next-character prediction, but the author could not replicate this and now suspects a bug. With sum-of-squared-activities goodness, alternating thousands of positive and thousands of negative updates only works if the learning rate is very low and the momentum is extremely high.",
+   "must_mention": [
+    [
+     "bug",
+     "replicat"
+    ],
+    [
+     "momentum",
+     "learning rate"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 9,
+     "quote": "I have been unable to replicate this result and I now suspect it was due to a bug."
+    },
+    {
+     "page": 9,
+     "quote": "alternating between thousands of weight updates on positive data and thousands on negative data only works if the learning rate is very low and the momentum is extremely high."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The abstract only states the hope ('If the positive and negative passes could be separated in time...'). An answer that says separation works, or works offline, is wrong. The paper calls this probably the most important open question about FF as a biological model."
+  },
+  {
+   "id": "ff-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 128,
+    "doi": "10.48550/arxiv.2212.13345",
+    "arxiv": "2212.13345",
+    "title": "The Forward-Forward Algorithm: Some Preliminary Investigations",
+    "pdf_sha256": "059f700a44f78227bfd8f6219b5460484502985808ff1e23874be4f53b468e4f"
+   },
+   "question": "What numerical value of the goodness threshold theta (in p(positive) = sigma(sum of y_j^2 - theta)) does the paper use when training FF on MNIST?",
+   "answer": "The paper does not give a value for the threshold theta. It only says the goodness should be well above 'some threshold value' for real data and well below it for negative data.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "threshold",
+    "θ",
+    "theta",
+    "bias"
+   ],
+   "notes": "theta is introduced in Eq. 1 on page 3 as 'some threshold' and is never given a value or a rule (e.g. one tied to the number of units). Trap: the only number near 'threshold' is 0.5 on page 4, where the blurred random masks for hybrid negative images are thresholded. That is unrelated to theta. The paper also gives no FF learning rate, optimizer or batch size."
+  },
+  {
+   "id": "eqprop-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 93,
+    "doi": "10.3389/fncom.2017.00024",
+    "arxiv": "1602.05179",
+    "title": "Equilibrium Propagation: Bridging the Gap between Energy-Based Models and Backpropagation",
+    "pdf_sha256": "4ceb9e2ed9ecd21f9c1ce281e8885c9d65fd2da050d93a7c9e6316984701a5a3"
+   },
+   "question": "What training and generalization (test) error do the authors report for their Equilibrium Propagation networks on MNIST?",
+   "paraphrase": "How well do these energy-based networks fit the handwritten digit training set, and how well do they do on unseen digits?",
+   "answer": "They reach 0.00% training error with 1, 2 and 3 hidden layers, and the generalization error lies between 2% and 3% depending on the architecture.",
+   "must_mention": [
+    [
+     "0.00",
+     "zero",
+     "0% training",
+     "0 training"
+    ],
+    [
+     "2 and 3",
+     "2-3",
+     "2 to 3",
+     "between 2"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 2,
+     "quote": "We train recurrent neural networks with 1, 2, and 3 hidden layers on MNIST and we achieve 0.00% training error. The generalization error lies between 2 and 3% depending on the architecture."
+    },
+    {
+     "page": 9,
+     "quote": "We achieve 0.00% training error. The generalization error lies between 2 and 3% depending on the architecture"
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The abstract only says such networks 'can be trained', with no numbers. The PDF text gives no per-architecture test error; the per-network curves are only in Figure 3 (hidden layers of 500 units)."
+  },
+  {
+   "id": "eqprop-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 93,
+    "doi": "10.3389/fncom.2017.00024",
+    "arxiv": "1602.05179",
+    "title": "Equilibrium Propagation: Bridging the Gap between Energy-Based Models and Backpropagation",
+    "pdf_sha256": "4ceb9e2ed9ecd21f9c1ce281e8885c9d65fd2da050d93a7c9e6316984701a5a3"
+   },
+   "question": "In the MNIST experiments, what technique do the authors use to cope with the long free-phase relaxation and speed up simulation?",
+   "paraphrase": "Settling to equilibrium before every update is slow. What trick makes their simulations faster?",
+   "answer": "They use 'persistent particles': for each training example they store the hidden-layer state at the end of the free phase and use it to initialize the network the next time that example is seen (next epoch). The previous fixed point serves as the starting point for the next free-phase relaxation, similar in spirit to Persistent Contrastive Divergence.",
+   "must_mention": [
+    [
+     "persistent",
+     "previous fixed point",
+     "reuse",
+     "re-use",
+     "warm start",
+     "warm-start",
+     "store",
+     "cache"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 11,
+     "quote": "we use \"persistent particles\" for the latent variables to re-use the previous fixed point configuration for a particular example as a starting point for the next free phase relaxation on that example."
+    },
+    {
+     "page": 11,
+     "quote": "for each training example in the dataset, we store the state of the hidden layers at the end of the free phase, and we use this to initialize the state of the network at the next epoch."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Do not confuse with the second-phase heuristic (only N/epsilon iterations with epsilon = 0.5, because full relaxation to the weakly clamped fixed point is unnecessary). Also do not confuse with the feedforward-initialization idea (Bengio et al. 2016) that the Discussion mentions only as a possibility."
+  },
+  {
+   "id": "eqprop-3",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 93,
+    "doi": "10.3389/fncom.2017.00024",
+    "arxiv": "1602.05179",
+    "title": "Equilibrium Propagation: Bridging the Gap between Energy-Based Models and Backpropagation",
+    "pdf_sha256": "4ceb9e2ed9ecd21f9c1ce281e8885c9d65fd2da050d93a7c9e6316984701a5a3"
+   },
+   "question": "The theory calls for a single learning rate for all synapses. What do the authors do about learning rates in practice, and what reason do they give?",
+   "paraphrase": "Do they really use one step size for every connection, as the math says they should? If not, why not?",
+   "answer": "In practice they have to use different learning rates for the weight matrices of different layers to make the algorithm work (chosen so that the relative weight change ||dW_k||/||W_k|| is about the same across layers). They have no clear explanation but believe it is due to the finite precision with which the fixed points are approached numerically, whereas the theory requires being exactly at the fixed points.",
+   "must_mention": [
+    [
+     "different learning rate",
+     "per-layer",
+     "per layer",
+     "layer-specific",
+     "layerwise",
+     "layer-wise",
+     "each layer"
+    ],
+    [
+     "precision",
+     "approximate",
+     "not exactly",
+     "inexact"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 11,
+     "quote": "in our experiments we need to choose different learning rates for the weight matrices of different layers to make the algorithm work."
+    },
+    {
+     "page": 11,
+     "quote": "We do not have a clear explanation for this fact yet, but we believe that this is due to the finite precision with which we approach the fixed points."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The per-layer values are in Table 2 (e.g. 0.1/0.05 for 784-500-10). The question asks for the practice and the stated reason, not the values."
+  },
+  {
+   "id": "eqprop-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 93,
+    "doi": "10.3389/fncom.2017.00024",
+    "arxiv": "1602.05179",
+    "title": "Equilibrium Propagation: Bridging the Gap between Energy-Based Models and Backpropagation",
+    "pdf_sha256": "4ceb9e2ed9ecd21f9c1ce281e8885c9d65fd2da050d93a7c9e6316984701a5a3"
+   },
+   "question": "What MNIST test error does a backpropagation-trained network with the same architecture reach in this paper's experiments, as a baseline for Equilibrium Propagation?",
+   "answer": "The paper does not report one. The experiments train only Equilibrium Propagation networks (0.00% training error, 2-3% generalization error) and run no backpropagation baseline.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "baseline",
+    "compar",
+    "backprop",
+    "back-prop",
+    "softmax",
+    "MLP",
+    "%"
+   ],
+   "notes": "All mentions of backpropagation are in the theory and related-work sections (e.g. Table 1 maps the phases of each algorithm), not in the experiments. The only percentages in the text are 0.00% training error and 2-3% generalization error, both for EqProp. Any number given for a backprop baseline is invented."
+  },
+  {
+   "id": "fa-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 90,
+    "doi": "10.1038/ncomms13276",
+    "arxiv": null,
+    "title": "Random synaptic feedback weights support error backpropagation for deep learning",
+    "pdf_sha256": "560b8bb7c9d417715b4cbc98a4aa4092064daffa825b667707c0110e099efe1b"
+   },
+   "question": "On MNIST with the 784-1000-10 network of logistic units, what mean test errors does the paper report for backprop and for feedback alignment?",
+   "paraphrase": "With one hidden layer of a thousand sigmoid units on handwritten digits, how do ordinary gradient training and the random-feedback method compare in error rate?",
+   "answer": "Backprop reaches 2.4% mean test error and feedback alignment 2.1%, averaged over 20 runs.",
+   "must_mention": [
+    [
+     "2.4"
+    ],
+    [
+     "2.1"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 4,
+     "quote": "On this task, backprop brings the mean error on the test set to 2.4%, averaged over 20 runs. Feedback alignment learns just as quickly, achieving 2.1% mean error, and develops similar feature detectors"
+    },
+    {
+     "page": 4,
+     "quote": "A 784-1000-10 network of logistic units learns to recognize handwritten digits."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The abstract only says FA performs as effectively as backprop. Trap: with 50% of W and B elements removed, FA gets 2.4% (matching backprop). The spiking 784-1500-1500-1500-1000 network gets 1.8%."
+  },
+  {
+   "id": "fa-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 90,
+    "doi": "10.1038/ncomms13276",
+    "arxiv": null,
+    "title": "Random synaptic feedback weights support error backpropagation for deep learning",
+    "pdf_sha256": "560b8bb7c9d417715b4cbc98a4aa4092064daffa825b667707c0110e099efe1b"
+   },
+   "question": "B and W never communicate directly. How, according to the authors, does information about the fixed random feedback matrix B end up shaping the forward output weights W?",
+   "paraphrase": "The random backward matrix never touches the output weights directly, so how do the output weights end up lined up with it?",
+   "answer": "The hidden-layer update dW0 ∝ B e x^T makes information about B accumulate in the hidden weights W0. That information then passes into W through W's own learning rule (dW ∝ e h^T = e x^T W0^T), so W0 pushes W into alignment with B^T. Once W aligns with B^T, B acts like W^T and delivers useful teaching signals.",
+   "must_mention": [
+    [
+     "W0",
+     "W_0",
+     "W₀",
+     "hidden-layer weights",
+     "hidden layer weights",
+     "hidden weights",
+     "first-layer weights",
+     "first layer weights"
+    ],
+    [
+     "align"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 6,
+     "quote": "In short, information about B flows into W0, altering W0 so that it pushes W into alignment with BT"
+    },
+    {
+     "page": 5,
+     "quote": "Synaptic weight information from B flows back into W0 (1) and then forward into W (2). As W aligns with BT, B begins to act like WT, sending useful teaching signals to the hidden units (3)."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The key point is the two-step route B -> W0 -> W. An answer that only says 'W aligns with B^T' without saying the information passes through W0 (the hidden-layer weights) is incomplete. The page-5 quote is from the Figure 5 caption."
+  },
+  {
+   "id": "fa-3",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 90,
+    "doi": "10.1038/ncomms13276",
+    "arxiv": null,
+    "title": "Random synaptic feedback weights support error backpropagation for deep learning",
+    "pdf_sha256": "560b8bb7c9d417715b4cbc98a4aa4092064daffa825b667707c0110e099efe1b"
+   },
+   "question": "What architecture and MNIST test error does the paper report for the network of neurons that integrate their activity over time and spike stochastically?",
+   "paraphrase": "What network did they build from noisy spiking units that integrate over time, and how accurate was it on digits?",
+   "answer": "The network is 784-1500-1500-1500-1000: three hidden layers of 1,500 stochastic binary units with an integration time constant of 0.9, and 1,000 output units (100 per class). Trained with feedback alignment, it reaches 1.8% final test error on MNIST.",
+   "must_mention": [
+    [
+     "1.8"
+    ],
+    [
+     "1500",
+     "1,500"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "in a network with three hidden layers, each comprised of 1,500 stochastic binary units whose integration window for synaptic inputs had a time constant of 0.9"
+    },
+    {
+     "page": 5,
+     "quote": "This network uses feedback alignment to learn to effectively classify handwritten digits (1.8% final error on the test set)."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The architecture string 784-1500-1500-1500-1000 is in the Figure 4 caption on page 5. No backprop number is given for this spiking network."
+  },
+  {
+   "id": "fa-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 90,
+    "doi": "10.1038/ncomms13276",
+    "arxiv": null,
+    "title": "Random synaptic feedback weights support error backpropagation for deep learning",
+    "pdf_sha256": "560b8bb7c9d417715b4cbc98a4aa4092064daffa825b667707c0110e099efe1b"
+   },
+   "question": "What test error does feedback alignment achieve on CIFAR-10 in this paper?",
+   "answer": "The paper does not evaluate on CIFAR-10. Its main-text experiments use MNIST and synthetic function-approximation tasks, and it says only that the method also works on harder tasks such as SVHN, with details in the Supplementary Notes.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "CIFAR",
+    "ImageNet",
+    "convol",
+    "colour",
+    "color",
+    "32x32",
+    "SVHN",
+    "data set"
+   ],
+   "notes": "CIFAR-10 is never mentioned. Near-miss: page 5 says the mechanism also trains deeper and wider networks and harder tasks 'such as the Google SVHN data set', pointing to the Supplementary Notes, which are not in this PDF and give no number here. A CIFAR-10 figure taken from later feedback-alignment studies (e.g. Bartunov et al. 2018) would be a hallucination."
+  },
+  {
+   "id": "lib-a1",
+   "scope": "library",
+   "kind": "find-paper",
+   "paper": {
+    "library_id": 128,
+    "doi": "10.48550/arxiv.2212.13345",
+    "arxiv": "2212.13345",
+    "title": "The Forward-Forward Algorithm: Some Preliminary Investigations",
+    "pdf_sha256": "059f700a44f78227bfd8f6219b5460484502985808ff1e23874be4f53b468e4f"
+   },
+   "question": "Which paper in my library makes negative training images by combining two different digit images through a large-region random mask, made by repeatedly blurring a random bit image and thresholding it?",
+   "paraphrase": "Which of my papers makes fake training examples by stitching two handwritten digits together with a blobby random mask?",
+   "answer": "The Forward-Forward Algorithm: Some Preliminary Investigations (Hinton, 2022). It builds hybrid negative images from one digit times a blurred, thresholded mask plus a different digit times the reversed mask.",
+   "must_mention": [
+    [
+     "forward-forward",
+     "forward forward"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 4,
+     "quote": "We then create hybrid images for the negative data by adding together one digit image times the mask and a different digit image times the reverse of the mask as shown in figure 1."
+    },
+    {
+     "page": 4,
+     "quote": "Masks like this can be created by starting with a random bit image and then repeatedly blurring the image with a filter of the form [1/4, 1/2, 1/4] in both the horizontal and vertical directions."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Distinctive to FF's unsupervised example (section 3.2). Contrastive divergence, Boltzmann/Helmholtz/wake-sleep, JEM and products-of-experts papers in the library get negative samples from the model, not from mask-blended digit images."
+  },
+  {
+   "id": "lib-a2",
+   "scope": "library",
+   "kind": "find-paper",
+   "paper": {
+    "library_id": 93,
+    "doi": "10.3389/fncom.2017.00024",
+    "arxiv": "1602.05179",
+    "title": "Equilibrium Propagation: Bridging the Gap between Energy-Based Models and Backpropagation",
+    "pdf_sha256": "4ceb9e2ed9ecd21f9c1ce281e8885c9d65fd2da050d93a7c9e6316984701a5a3"
+   },
+   "question": "Which paper in my library only weakly clamps the output units toward their targets in a second phase, and in its MNIST experiments picks the sign of that clamping factor at random as a regularizer?",
+   "paraphrase": "Which of my papers pushes the outputs only slightly toward the right answer in a second phase, and randomly flips the direction of that push as a regulariser?",
+   "answer": "Equilibrium Propagation: Bridging the Gap between Energy-Based Models and Backpropagation (Scellier & Bengio). The second, weakly clamped phase uses a small clamping factor beta, and the authors choose its sign at random to regularize the network.",
+   "must_mention": [
+    [
+     "equilibrium propagation"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 11,
+     "quote": "We find that it helps regularize the network if we choose the sign of β at random in the second phase."
+    },
+    {
+     "page": 4,
+     "quote": "when β > 0, the “external force” drives the output unit yi toward the target di. In this case, we say that the network is in the weakly clamped phase (or second phase)."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The random sign of beta is an implementation detail found only in this paper's experiments section, not in the reviews in the library (Backpropagation and the brain; Theories of Error Back-Propagation in the Brain), which may describe EqProp's weak clamping in general terms. Contrastive Hebbian learning and Boltzmann machines clamp outputs fully."
+  },
+  {
+   "id": "kh-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 25,
+    "doi": "10.1073/pnas.1820458116",
+    "arxiv": "1806.10181",
+    "title": "Unsupervised learning by competing hidden units",
+    "pdf_sha256": "45702510eb77cfca48a007ba27821a2188ba930d82d191cfbcd24cda7b74024a"
+   },
+   "question": "What values of the Lebesgue norm p and the anti-Hebbian parameter Δ did the authors use for the unsupervised phase of training on MNIST?",
+   "paraphrase": "Which exponent for the norm and which strength for the repulsive second-place term did they pick when training on handwritten digits?",
+   "answer": "For MNIST the unsupervised phase used Lebesgue norm p = 4 and anti-Hebbian learning parameter Δ = 0.4 (minibatches of 100 for 100 epochs, learning rate decreasing linearly from 0.04 to 0). For CIFAR-10 they used p = 4 and Δ = 0.3.",
+   "must_mention": [
+    [
+     "p = 4",
+     "p=4",
+     "p of 4",
+     "p equal to 4",
+     "p is 4",
+     "L4",
+     "4-norm",
+     "norm of 4"
+    ],
+    [
+     "0.4",
+     "delta = 0.4"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 9,
+     "quote": "Unsupervised part of the training for MNIST was done for the following optimal parameters: Lebesgue norm p = 4, anti-hebbian learning parameter ∆= 0.4."
+    },
+    {
+     "page": 5,
+     "quote": "The optimal value of the Lebesgue norm parameter p = 4 was used."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Hyperparameters are in Appendix B (page 9 of the arXiv v2 PDF). Trap: CIFAR-10 uses Δ = 0.3, not 0.4. The '0.4' group also matches the string '0.04' (the MNIST learning rate), so a grader should confirm Δ = 0.4 is actually stated. The PDF is the arXiv version, not the PNAS layout."
+  },
+  {
+   "id": "kh-2",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 25,
+    "doi": "10.1073/pnas.1820458116",
+    "arxiv": "1806.10181",
+    "title": "Unsupervised learning by competing hidden units",
+    "pdf_sha256": "45702510eb77cfca48a007ba27821a2188ba930d82d191cfbcd24cda7b74024a"
+   },
+   "question": "On CIFAR-10, what test error did the two-phase 'biological' network reach, and how does it compare with the same-size network trained end-to-end with SGD?",
+   "paraphrase": "On the small ten-class natural-image dataset, how far behind ordinary end-to-end gradient training is the locally trained network?",
+   "answer": "The biological network (unsupervised 3072→2000 layer, then supervised 2000→10) reached 49.25% test error (44.95% training error), versus 44.74% test error for the 3072→2000→10 network trained end-to-end with SGD for 100 epochs.",
+   "must_mention": [
+    [
+     "49.25"
+    ],
+    [
+     "44.74"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 7,
+     "quote": "The “biological” network achieves training error 44.95% and test error 49.25%."
+    },
+    {
+     "page": 7,
+     "quote": "The optimal duration of SGD training for the conventional network, see Appendix B for details, was 100 epochs, which gave the error on the test set 44.74%."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Errors, not accuracies. Nearby trap: 49.29% is the CIFAR benchmark the authors quote for difference target propagation [6], not their own result. The abstract only says performance is 'comparable', with no numbers."
+  },
+  {
+   "id": "kh-3",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 25,
+    "doi": "10.1073/pnas.1820458116",
+    "arxiv": "1806.10181",
+    "title": "Unsupervised learning by competing hidden units",
+    "pdf_sha256": "45702510eb77cfca48a007ba27821a2188ba930d82d191cfbcd24cda7b74024a"
+   },
+   "question": "How does the paper's 'fast AI implementation' avoid numerically solving the lateral-inhibition dynamics for every training example?",
+   "paraphrase": "How do they avoid simulating the competition between hidden units step by step for every training example?",
+   "answer": "Instead of solving the dynamical equations, it uses the input currents as a proxy for ranking the final activities. The top-ranked unit is pushed toward the training example with g = 1, and the unit ranked second (more generally k-th) is pushed away with g = −Δ. Ranking is then done for whole minibatches, and the weight updates are averaged over the examples in each minibatch.",
+   "must_mention": [
+    [
+     "rank"
+    ],
+    [
+     "pushed away",
+     "push away",
+     "pushes away",
+     "anti-hebbian",
+     "negative",
+     "away from"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "First, instead of solving dynamical equations we will use the currents as a proxy for ranking of the final activities."
+    },
+    {
+     "page": 5,
+     "quote": "Given that ranking the unit that responds the most to a given training example is pushed towards that example with activation g = 1. The unit that is second (or more generally k-th) in ranking is pushed away from the training example with activation g = −∆."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Section 3, 'A fast AI implementation'. The slow version solves Eq. 4 (global inhibition w_inh) to a steady state. The two drawbacks the shortcut removes are online one-at-a-time training and waiting for the steady state."
+  },
+  {
+   "id": "kh-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 25,
+    "doi": "10.1073/pnas.1820458116",
+    "arxiv": "1806.10181",
+    "title": "Unsupervised learning by competing hidden units",
+    "pdf_sha256": "45702510eb77cfca48a007ba27821a2188ba930d82d191cfbcd24cda7b74024a"
+   },
+   "question": "Over how many random seeds or independent runs were the reported MNIST and CIFAR-10 errors averaged, and what are their standard deviations?",
+   "answer": "The paper does not say. It reports single error values (e.g. 1.52% test error on MNIST, 49.25% on CIFAR-10) without the number of runs, seeds, or any error bars or standard deviations.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "seed",
+    "standard deviation",
+    "±",
+    "error bar",
+    "repeat",
+    "independent",
+    "runs",
+    "variance",
+    "confidence",
+    "trials",
+    "mean",
+    "times"
+   ],
+   "notes": "Grep hits were irrelevant: '±1' is the one-hot label encoding (Appendix B), and 'repeated' appears only in 'repeated indices'. Paper 26 does report mean ± std over five runs for its own results, so a model mixing up papers may invent error bars here."
+  },
+  {
+   "id": "sh-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 26,
+    "doi": "10.1088/2634-4386/aca710",
+    "arxiv": "2107.05747",
+    "title": "SoftHebb: Bayesian inference in unsupervised Hebbian soft winner-take-all networks",
+    "pdf_sha256": "9e4abf48ca04bce6a1f54e6d6b4230e9ed529659c4b56c026307d41de69de17f"
+   },
+   "question": "What MNIST accuracy did the 2000-neuron SoftHebb network reach in its single-layer (label-assignment) and two-layer (added linear classifier) evaluations?",
+   "paraphrase": "How accurate is the network with two thousand units on handwritten digits, both read out directly from its units and with a trained classifier on top?",
+   "answer": "SoftHebb reached (96.31 ± 0.06)% in its 1-layer form and (97.80 ± 0.02)% in its 2-layer form, with K = 2000 neurons and five repeated runs. The end-to-end backprop MLP baseline reached (98.65 ± 0.06)%.",
+   "must_mention": [
+    [
+     "96.31"
+    ],
+    [
+     "97.8"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 11,
+     "quote": "SoftHebb achieved an accuracy of (96.31 ± 0.06)% and (97.80 ± 0.02)% in its 1- and 2-layer form respectively."
+    },
+    {
+     "page": 11,
+     "quote": "Inference of the input labels by the WTA network of 2000 neurons was performed in two different ways."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The abstract gives no accuracies. Trap: paper 27 (the follow-up) cites a different single-layer MNIST figure for this work, (96.94 ± 0.15)%. Use paper 26's own numbers. The 1-layer form assigns each neuron the label that makes it win most often; the 2-layer form trains a linear classifier with Adam on the frozen WTA layer."
+  },
+  {
+   "id": "sh-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 26,
+    "doi": "10.1088/2634-4386/aca710",
+    "arxiv": "2107.05747",
+    "title": "SoftHebb: Bayesian inference in unsupervised Hebbian soft winner-take-all networks",
+    "pdf_sha256": "9e4abf48ca04bce6a1f54e6d6b4230e9ed529659c4b56c026307d41de69de17f"
+   },
+   "question": "How do the authors measure the cross-entropy loss of the unsupervised SoftHebb network during training, given that the true hidden causes are not available?",
+   "paraphrase": "Without knowing the real causes that generated the images, how can they track the loss while the network learns without labels?",
+   "answer": "They propose a 'post-hoc cross-entropy' method: (a) train SoftHebb without supervision, (b) train a supervised classifier on its outputs, then (c) repeat SoftHebb's training with the same initial weights and input ordering while measuring the trained classifier's cross-entropy loss. This shows the label cross-entropy H_L being minimized, and with it H_C.",
+   "must_mention": [
+    [
+     "same initial weights",
+     "same initial",
+     "same initialization",
+     "same initialisation"
+    ],
+    [
+     "classifier"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 10,
+     "quote": "Therefore, by (a) unsupervised training of SoftHebb, then (b) training a supervised classifier on top, and finally (c1) repeating the training of SoftHebb with the same initial weights and ordering of the training inputs as in step (a), while (c2) measuring the trained classifier's loss"
+    },
+    {
+     "page": 10,
+     "quote": "We call this the post-hoc cross-entropy method, and it enables evaluation of the learning process in a theoretically sound manner during experimentation"
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Section 2.9, results in Fig. 4c. The classifier stands in for the unknown causal mapping P(L|C) between the direct causes and the labels."
+  },
+  {
+   "id": "sh-3",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 26,
+    "doi": "10.1088/2634-4386/aca710",
+    "arxiv": "2107.05747",
+    "title": "SoftHebb: Bayesian inference in unsupervised Hebbian soft winner-take-all networks",
+    "pdf_sha256": "9e4abf48ca04bce6a1f54e6d6b4230e9ed529659c4b56c026307d41de69de17f"
+   },
+   "question": "In the robustness comparison with K-means and PCA (100 units each), what clean MNIST accuracy did K-means and PCA reach when given the same softmax activation as SoftHebb?",
+   "paraphrase": "When they compared against clustering and principal components given the same soft output nonlinearity, what accuracy did those baselines get on clean digits?",
+   "answer": "With softmax, K-means reached only 53.64% and PCA 28.55%, against 91.06% for SoftHebb. The authors therefore reran the comparison with ReLU for K-means and PCA, which reached 90.61% and 82.74%.",
+   "must_mention": [
+    [
+     "53.64"
+    ],
+    [
+     "28.55"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 14,
+     "quote": "For example, on MNIST, K-means only reached an accuracy of 53.64% and PCA 28.55%, whereas SoftHebb reached 91.06%."
+    },
+    {
+     "page": 14,
+     "quote": "Therefore, we performed the experiment again, but with ReLU activation for K-means and PCA, reaching 90.61% and 82.74% respectively."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The setup sentence ('We used 100 neurons, principal components, or centroids respectively.') is on page 13; the numbers are on page 14. Trap: the ReLU numbers (90.61%, 82.74%) answer a different variant of the question."
+  },
+  {
+   "id": "sh-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 26,
+    "doi": "10.1088/2634-4386/aca710",
+    "arxiv": "2107.05747",
+    "title": "SoftHebb: Bayesian inference in unsupervised Hebbian soft winner-take-all networks",
+    "pdf_sha256": "9e4abf48ca04bce6a1f54e6d6b4230e9ed529659c4b56c026307d41de69de17f"
+   },
+   "question": "What test accuracy does SoftHebb achieve on CIFAR-100?",
+   "answer": "The paper does not report CIFAR-100. Its only extra datasets are Fashion-MNIST (87.46%) and preliminary CIFAR-10 results (50.27% for SoftHebb, 49.78% for hard WTA).",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "CIFAR-100",
+    "CIFAR100",
+    "CIFAR 100",
+    "100 classes",
+    "ImageNet",
+    "SVHN"
+   ],
+   "notes": "Plausible because the follow-up paper 27 shows a CIFAR-100 panel (its Fig. 3B, with no number in the text). A correct answer declines, and may mention that only CIFAR-10 is reported."
+  },
+  {
+   "id": "hdl-1",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 27,
+    "doi": "10.48550/arxiv.2209.11883",
+    "arxiv": "2209.11883",
+    "title": "Hebbian Deep Learning Without Feedback",
+    "pdf_sha256": "29bfbc60d94cc3833c505f074452bdb727a2c25d5618ef4030a7800d05e258bf"
+   },
+   "question": "How do the authors define the new 'soft' anti-Hebbian plasticity they introduce for soft winner-take-all networks?",
+   "paraphrase": "What exactly is their new softer version of the opposite-sign learning rule for neurons that compete with each other?",
+   "answer": "It simply negates SoftHebb's weight update (Eq. 2) in all neurons except the maximally activated one. Earlier hard-WTA approaches (Krotov & Hopfield 2019; Grinberg et al. 2019) instead applied anti-Hebbian plasticity to the k-th most active neuron.",
+   "must_mention": [
+    [
+     "negat",
+     "opposite sign",
+     "flips the sign",
+     "flipped sign",
+     "reverses",
+     "reversed",
+     "minus"
+    ],
+    [
+     "maximally activated",
+     "most activated",
+     "most active",
+     "maximally active",
+     "winner",
+     "winning",
+     "highest activation",
+     "strongest"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "Here we introduce a new, simple form of anti-Hebbian plasticity for soft WTA networks, that simply negates SoftHebb's weight update (Equation (2)) in all neurons except the maximally activated one."
+    },
+    {
+     "page": 7,
+     "quote": "In those cases, anti-Hebbian plasticity was applied to the k-th most active neuron."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Trap: Krotov & Hopfield (paper 25) apply −Δ to the k-th ranked unit only. Here every neuron except the winner gets the negated SoftHebb update."
+  },
+  {
+   "id": "hdl-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 27,
+    "doi": "10.48550/arxiv.2209.11883",
+    "arxiv": "2209.11883",
+    "title": "Hebbian Deep Learning Without Feedback",
+    "pdf_sha256": "29bfbc60d94cc3833c505f074452bdb727a2c25d5618ef4030a7800d05e258bf"
+   },
+   "question": "How did the authors decide how many hidden layers to stack for each dataset?",
+   "paraphrase": "How did they choose the depth of the network for each dataset?",
+   "answer": "Each layer's stride-2 pooling halves each dimension of the resolution, and they stop adding layers once the output resolution is at most 4 × 4. That gives three hidden convolutional layers for MNIST and CIFAR-10, four for STL-10, and five for ImageNet at 160 × 160 px.",
+   "must_mention": [
+    [
+     "4 × 4",
+     "4x4",
+     "4 by 4",
+     "four by four"
+    ],
+    [
+     "resolution"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 7,
+     "quote": "We stop adding layers when the output resolution becomes at most 4 × 4."
+    },
+    {
+     "page": 7,
+     "quote": "Thus, the multilayer network has three hidden convolutional layers for MNIST or CIFAR-10, four layers for STL-10, and five layers for ImageNet at a resolution setting of 160 × 160 px."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The same rule is repeated in Appendix A.5 (page 17). The abstract says only 'up to five hidden layers'. The Discussion's 'only 6 layers in the case of ImageNet' counts the classifier too. Width also grows by a factor of 4 per layer, but that is a separate design choice."
+  },
+  {
+   "id": "hdl-3",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 27,
+    "doi": "10.48550/arxiv.2209.11883",
+    "arxiv": "2209.11883",
+    "title": "Hebbian Deep Learning Without Feedback",
+    "pdf_sha256": "29bfbc60d94cc3833c505f074452bdb727a2c25d5618ef4030a7800d05e258bf"
+   },
+   "question": "What STL-10 accuracy does SoftHebb reach after being fine-tuned end-to-end with backprop on the labelled STL-10 examples?",
+   "paraphrase": "On the ten-class image dataset where most images have no labels, what accuracy do they reach once the whole network is trained further with gradients?",
+   "answer": "Fine-tuning raises SoftHebb's STL-10 accuracy to (78.5 ± 0.35)%. Purely Hebbian SoftHebb with a linear classifier reached (76.23 ± 0.19)%, which already beat fully supervised BP's (74.51 ± 0.36)%.",
+   "must_mention": [
+    [
+     "78.5"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 8,
+     "quote": "By fine-tuning SoftHebb with end-to-end BP on the few labelled STL-10 examples, SoftHebb's accuracy further improves to (78.5 ± 0.35)%."
+    },
+    {
+     "page": 8,
+     "quote": "In STL-10, SoftHebb (76.23 ± 0.19)% outperforms fully supervised BP (74.51 ± 0.36)%"
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Trap: the abstract's STL-10 figure (76.2%) is the non-fine-tuned result. The fine-tuning protocol is in Appendix A.6.4."
+  },
+  {
+   "id": "hdl-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 27,
+    "doi": "10.48550/arxiv.2209.11883",
+    "arxiv": "2209.11883",
+    "title": "Hebbian Deep Learning Without Feedback",
+    "pdf_sha256": "29bfbc60d94cc3833c505f074452bdb727a2c25d5618ef4030a7800d05e258bf"
+   },
+   "question": "Which optimizer (e.g. Adam or SGD with momentum) was used to train the linear classifier head on top of the SoftHebb layers?",
+   "answer": "The paper does not name the optimizer. It gives the classifier's minibatch size (64), epochs (50/50/100/200), initial learning rate 0.001 with halving at fixed fractions of training, and dropout 0.5, but not which optimizer was used.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "Adam",
+    "SGD",
+    "optimizer",
+    "optimiser",
+    "momentum",
+    "RMSprop",
+    "stochastic gradient",
+    "weight decay",
+    "gradient descent"
+   ],
+   "notes": "'gradient descent' appears only for the projected-gradient-descent receptive-field visualisation (Appendix A.7); 'Momentum' appears only in a reference title. The learning-rate schedule is given, but it is not the optimizer. Trap: paper 26 (the same group's earlier paper) used Adam for its classifier, so a model may borrow that."
+  },
+  {
+   "id": "lib-b1",
+   "scope": "library",
+   "kind": "find-paper",
+   "paper": {
+    "library_id": 26,
+    "doi": "10.1088/2634-4386/aca710",
+    "arxiv": "2107.05747",
+    "title": "SoftHebb: Bayesian inference in unsupervised Hebbian soft winner-take-all networks",
+    "pdf_sha256": "9e4abf48ca04bce6a1f54e6d6b4230e9ed529659c4b56c026307d41de69de17f"
+   },
+   "question": "Which paper in my library argues that each MNIST image's true hidden cause is a combination of the digit and a handwriting style, and uses this to show that an unsupervised Hebbian network minimizes cross-entropy with respect to labels it never sees?",
+   "paraphrase": "Which of my papers says a handwritten digit is caused by which digit it is together with the writer's style, and uses that to argue an unsupervised network reduces a loss on labels it never sees?",
+   "answer": "SoftHebb: Bayesian inference in unsupervised Hebbian soft winner-take-all networks (Moraitis et al.; library id 26).",
+   "must_mention": [
+    [
+     "Bayesian inference in unsupervised Hebbian",
+     "SoftHebb: Bayesian inference",
+     "Hebbian soft winner-take-all networks"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 10,
+     "quote": "In reality, the direct cause C generating each MNIST example in the sense implied by causal inference is not the digit cause on its own, which corresponds to the MNIST label, but rather it is a combination of the digit L with one of many handwriting styles S."
+    },
+    {
+     "page": 10,
+     "quote": "This is remarkable, given that SoftHebb never accesses the labels or any other supervisory signal."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Excludes paper 27 (Hebbian Deep Learning Without Feedback). That paper only summarises the earlier result ('cross-entropy from the labels under certain assumptions') and never makes the digit × handwriting-style causal argument. An answer that names 'multilayer SoftHebb' or 'Hebbian Deep Learning Without Feedback' is wrong. The must_mention fragments are deliberately ones that do not occur in paper 27's title."
+  },
+  {
+   "id": "lib-b2",
+   "scope": "library",
+   "kind": "find-paper",
+   "paper": {
+    "library_id": 27,
+    "doi": "10.48550/arxiv.2209.11883",
+    "arxiv": "2209.11883",
+    "title": "Hebbian Deep Learning Without Feedback",
+    "pdf_sha256": "29bfbc60d94cc3833c505f074452bdb727a2c25d5618ef4030a7800d05e258bf"
+   },
+   "question": "Which paper in my library trains a multi-layer convolutional network with a Hebbian rule for just one unsupervised epoch, using a per-neuron learning rate that decays to zero as each neuron's weight-vector norm converges to 1?",
+   "paraphrase": "Which of my papers trains a deep convolutional network with a local plasticity rule for a single pass over the data, with each neuron's step size shrinking as its weights settle down?",
+   "answer": "Hebbian Deep Learning Without Feedback (Journé, Garcia Rodriguez, Guo & Moraitis, ICLR 2023; library id 27).",
+   "must_mention": [
+    [
+     "Hebbian Deep Learning Without Feedback",
+     "Deep Learning Without Feedback"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "We introduce a per-neuron adaptive learning rate scheme that stabilizes to zero as neuron weight vectors converge to a sphere of radius 1, and is initially big when the weight vectors' norms are large compared to 1"
+    },
+    {
+     "page": 6,
+     "quote": "Unsupervised Hebbian learning received only one presentation of the training set, i.e. epoch."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Excludes paper 26 (SoftHebb 2021), which trains a single fully connected layer for 100 epochs with linear or exponential learning-rate decay, not a norm-dependent per-neuron rate. Also excludes Krotov & Hopfield (25): their weights converge to a unit p-sphere, but they use a linearly decreasing global learning rate, one hidden layer, and 100 epochs."
+  },
+  {
+   "id": "sdm-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 131,
+    "doi": "10.48550/arxiv.2303.11934",
+    "arxiv": "2303.11934",
+    "title": "Sparse Distributed Memory is a Continual Learner",
+    "pdf_sha256": "1d480c7eeed66a6810a59bf68ab30b871945dff726b42d0eeefc3373d2d7ccd1"
+   },
+   "question": "What final Split CIFAR10 validation accuracy does the paper report for SDMLP combined with EWC in the 10K-neuron setting, and how does that compare with the oracle?",
+   "paraphrase": "On the sequence of two-class tasks cut from the ten-class image dataset, what final accuracy do they get when they combine their sparse network with the weight-importance penalty, and how close is that to training on everything at once?",
+   "answer": "SDMLP+EWC reaches 86%, the strongest result, barely forgetting anything compared with an oracle that gets 93% when trained on all of CIFAR10 at once.",
+   "must_mention": [
+    [
+     "86"
+    ],
+    [
+     "93"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 8,
+     "quote": "However, the combination of SDMLP and EWC leads to the strongest performance of 86%, barely forgetting any information compared to an oracle that gets 93% when trained on all of CIFAR10 simultaneously."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Table 1 (p6) gives the same numbers as 0.86 and 0.93. Possible wrong answers: SDMLP alone (71%), FlyModel (82%), SDMLP+MAS (84%), and the 1K-neuron SDMLP+EWC result (83%, Table 5). The no-pretraining ablation also gives SDMLP+EWC 84% (Table 4)."
+  },
+  {
+   "id": "sdm-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 131,
+    "doi": "10.48550/arxiv.2303.11934",
+    "arxiv": "2303.11934",
+    "title": "Sparse Distributed Memory is a Continual Learner",
+    "pdf_sha256": "1d480c7eeed66a6810a59bf68ab30b871945dff726b42d0eeefc3373d2d7ccd1"
+   },
+   "question": "How does the SDMLP's Top-K activation differ from the k-sparse approach of Makhzani & Frey, which keeps only the k most active units?",
+   "paraphrase": "How is their way of keeping only the few most active neurons different from earlier sparse autoencoders that just zero out the rest?",
+   "answer": "Makhzani & Frey zero out every unit outside the top k and leave the k winners untouched. The SDMLP, modelling an inhibitory interneuron, instead subtracts the (k+1)-th largest activation from all neurons that stay on, and this gives a significant boost in continual learning.",
+   "must_mention": [
+    [
+     "subtract"
+    ],
+    [
+     "k+1",
+     "k + 1",
+     "(k+1)-th",
+     "next largest",
+     "next-largest"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "A similar approach without the biological justification is used by Makhzani & Frey (2014) but they zero out all values that are not the k most active and keep the remaining k untouched."
+    },
+    {
+     "page": 5,
+     "quote": "Motivated by our inhibitory interneuron, we instead subtract the k + 1-th activation from all neurons that remain on."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Table 2 ablation: Linear Subtract 0.63 vs Linear Mask 0.38. App. B.3 adds that masking does better during pretraining, but subtraction does better for continual learning. Do not confuse this with the k annealing (linearly lowering k from the layer size to k_target), which is a separate mechanism for dead neurons."
+  },
+  {
+   "id": "sdm-3",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 131,
+    "doi": "10.48550/arxiv.2303.11934",
+    "arxiv": "2303.11934",
+    "title": "Sparse Distributed Memory is a Continual Learner",
+    "pdf_sha256": "1d480c7eeed66a6810a59bf68ab30b871945dff726b42d0eeefc3373d2d7ccd1"
+   },
+   "question": "Which optimizer do the authors use to train the SDMLP for continual learning, and why do they avoid Adam and RMSProp?",
+   "paraphrase": "What training algorithm do they use for learning tasks in sequence, and why do they avoid adaptive optimisers?",
+   "answer": "They use plain SGD without momentum. Momentum optimizers (especially Adam and RMSProp) suffer from what the authors call \"stale momentum\" in the sparse Top-K setting: their moving averages go out of date, so they keep updating inactive neurons and blow up gradient magnitudes when a neuron reactivates after a quiet period. This kills neurons and harms continual learning.",
+   "must_mention": [
+    [
+     "without momentum",
+     "no momentum",
+     "momentum-free",
+     "momentum free",
+     "plain SGD",
+     "vanilla SGD"
+    ],
+    [
+     "stale"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "Not only will these momentum optimizers update inactive neurons not in the Top-K, but also explode gradient magnitudes when neurons become activated after a period of quiescence."
+    },
+    {
+     "page": 5,
+     "quote": "We explain and investigate stale momenta further in App. D and use SGD without momentum as our solution."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Traps: footnote 8 (p8) says the combined SDMLP+EWC used SGDM, which did slightly better there. App. D (p38) recommends SGDM for pretraining and SGD for continual learning. Table 2: SGD 0.63, SGDM 0.54, Adam 0.23, RMSProp 0.20. The abstract only says 'novel methods to train sparse networks'."
+  },
+  {
+   "id": "sdm-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 131,
+    "doi": "10.48550/arxiv.2303.11934",
+    "arxiv": "2303.11934",
+    "title": "Sparse Distributed Memory is a Continual Learner",
+    "pdf_sha256": "1d480c7eeed66a6810a59bf68ab30b871945dff726b42d0eeefc3373d2d7ccd1"
+   },
+   "question": "What accuracy does the SDMLP reach on Split Tiny-ImageNet in the class-incremental setting?",
+   "answer": "The paper does not report this. It evaluates continual learning on Split CIFAR10, Split CIFAR100, Split MNIST and Split FashionMNIST. ImageNet32 is used only for pretraining, and Tiny-ImageNet is never used.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "Tiny",
+    "TinyImageNet",
+    "Tiny-ImageNet",
+    "CORe50",
+    "Omniglot",
+    "SVHN",
+    "Permuted"
+   ],
+   "notes": "'Tiny' never occurs in the text. 'Permuted' occurs once, only to say Active Dendrites failed outside Permuted MNIST. Trap: ImageNet32 is used heavily as the pretraining set (and in the k ablations of App. C.2), but no continual-learning result is reported on any ImageNet split. Note: the dumped text file trips the shell's grep wrapper as binary; use grep -a."
+  },
+  {
+   "id": "illing-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 28,
+    "doi": "10.1016/j.neunet.2019.06.001",
+    "arxiv": "1905.04101",
+    "title": "Biologically plausible deep learning — But how far can we go with shallow networks?",
+    "pdf_sha256": "ffc95eb2bc50fe23d8221be9df1a08550dd7f73176134957dfa49665da85af4d"
+   },
+   "question": "Which receptive-field (patch) size do the authors find works best for the localized random projection networks on MNIST?",
+   "paraphrase": "How big should each hidden unit's local window onto the image be for the best digit accuracy?",
+   "answer": "The best patch size is about p ≈ 10, i.e. 10×10-pixel patches. The other localized methods show similar optima around p = 10, and the optimum is more pronounced for larger hidden layers (p = 28 recovers full connectivity).",
+   "must_mention": [
+    [
+     "p = 10",
+     "p ≈ 10",
+     "10 × 10",
+     "10x10",
+     "10 by 10",
+     "around 10",
+     "about 10",
+     "approximately 10",
+     "roughly 10",
+     "size 10",
+     "size of 10",
+     "10 pixels"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 5,
+     "quote": "We test 푙-RP for diﬀerent patch sizes 푝and ﬁnd an optimum around 푝≈10 (see Figure 3a)."
+    },
+    {
+     "page": 6,
+     "quote": "The optimum for receptive field size … 10 is more pronounced for large hidden layer sizes."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The PDF text layer renders the italic l and p as Hangul glyphs (푙, 푝), so the first quote keeps those characters exactly as extracted. The second quote skips the glyph with an ellipsis. Table 4 lists the tested sizes [1,5,10,15,20,25,28]. Table 3 results all use p = 10 with n_h = 5000."
+  },
+  {
+   "id": "illing-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 28,
+    "doi": "10.1016/j.neunet.2019.06.001",
+    "arxiv": "1905.04101",
+    "title": "Biologically plausible deep learning — But how far can we go with shallow networks?",
+    "pdf_sha256": "ffc95eb2bc50fe23d8221be9df1a08550dd7f73176134957dfa49665da85af4d"
+   },
+   "question": "In the spiking LIF network, why do the authors switch off learning for a period after each change from one input pattern to the next?",
+   "paraphrase": "Why do they pause plasticity right after the input switches to a new image in the spiking version?",
+   "answer": "During the activity transients after a pattern switch, network activity carries information about both the previous and the current pattern, but the STDP rule is designed for responses to a single input pattern. Without disabling learning in these transients, the networks never reached a low test error.",
+   "must_mention": [
+    [
+     "previous",
+     "preceding",
+     "prior pattern",
+     "earlier pattern",
+     "old pattern",
+     "last pattern",
+     "both patterns",
+     "two patterns"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 7,
+     "quote": "We experienced that without disabling learning during these transient phases the networks never reached a low test error."
+    },
+    {
+     "page": 7,
+     "quote": "This is not surprising, since in this phase the network activities carry information both about the previously presented pattern and the current one, but the learning rule is designed for network activities in response to a single input pattern."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Appendix E (p11) gives the same reason in shorter form: 'the noise introduced by these transient phases was found to deteriorate learning progress'. It sets T_trans = 4τm (Table 6: 100 ms). An answer that only says 'noise from transients' is partially correct but misses the mixing of two patterns."
+  },
+  {
+   "id": "illing-3",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 28,
+    "doi": "10.1016/j.neunet.2019.06.001",
+    "arxiv": "1905.04101",
+    "title": "Biologically plausible deep learning — But how far can we go with shallow networks?",
+    "pdf_sha256": "ffc95eb2bc50fe23d8221be9df1a08550dd7f73176134957dfa49665da85af4d"
+   },
+   "question": "How large is the remaining MNIST accuracy gap between the rate-based and the spiking LIF versions of the localized random projection / random Gabor networks, and what do the authors attribute it to?",
+   "paraphrase": "How much accuracy is lost going from continuous-valued units to spiking ones, and what causes the loss?",
+   "answer": "The gap is below 0.3%. The authors attribute it to noise introduced by the spiking approximation of rates and to the activity transients after pattern switches.",
+   "must_mention": [
+    [
+     "0.3"
+    ],
+    [
+     "noise",
+     "transient"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 7,
+     "quote": "The remaining gap (< 0.3%) between rate model and spiking LIF model presumably stems from noise introduced by the spiking approximation of rates and the activity transients mentioned above."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Table 3 (p6): rate l-RP 98.4 vs spiking 98.2; rate l-RG 98.9 vs spiking 98.6. The abstract's '>98.2%' compares the spiking models with backprop-trained rate networks, not with their own rate versions."
+  },
+  {
+   "id": "illing-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 28,
+    "doi": "10.1016/j.neunet.2019.06.001",
+    "arxiv": "1905.04101",
+    "title": "Biologically plausible deep learning — But how far can we go with shallow networks?",
+    "pdf_sha256": "ffc95eb2bc50fe23d8221be9df1a08550dd7f73176134957dfa49665da85af4d"
+   },
+   "question": "What test accuracy does the localized random Gabor (l-RG) network reach on Fashion-MNIST?",
+   "answer": "The paper does not report this. It evaluates only on MNIST and CIFAR10, and it mentions ImageNet only as an example of a harder dataset that the field has moved to.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "Fashion",
+    "FashionMNIST",
+    "Zalando",
+    "SVHN",
+    "EMNIST",
+    "KMNIST",
+    "STL-10",
+    "NORB",
+    "Omniglot",
+    "Tiny"
+   ],
+   "notes": "None of the checked terms occur. Trap: the paper urges testing on datasets other than MNIST, and Table 3 gives l-RG on CIFAR10 (55.6%) and MNIST (98.9%); neither answers a Fashion-MNIST question."
+  },
+  {
+   "id": "ewc-1",
+   "scope": "paper",
+   "kind": "lookup",
+   "paper": {
+    "library_id": 78,
+    "doi": "10.1073/pnas.1611835114",
+    "arxiv": null,
+    "title": "Overcoming catastrophic forgetting in neural networks",
+    "pdf_sha256": "5e181839191ab4582da2b5ff9666f5222e40b8b8d2f1cdf4fa7100b3a58d7a29"
+   },
+   "question": "What scaling factor (λ, the 'Fisher multiplier') did the authors use for the EWC penalty in the Atari experiments?",
+   "paraphrase": "How heavily is the quadratic penalty on important weights weighted in the video game experiments?",
+   "answer": "They scaled the Fisher by 400 to form the EWC penalty (a scaling factor of 400).",
+   "must_mention": [
+    [
+     "400"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 11,
+     "quote": "a scaling factor for the EWC penalty of 400"
+    },
+    {
+     "page": 12,
+     "quote": "Fisher multiplier 400 The Fisher is scaled by this number to form the EWC penalty."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The PDF is the arXiv v2 version (1612.00796); the library has no arXiv id for it. The main text (p5) only says λ 'was optimized by hyperparameter search'. No λ is reported for the permuted-MNIST experiments, so the 400 applies to Atari only. Table 2's caption wrongly says 'MNIST figures' but the table is the Atari hyperparameters."
+  },
+  {
+   "id": "ewc-2",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 78,
+    "doi": "10.1073/pnas.1611835114",
+    "arxiv": null,
+    "title": "Overcoming catastrophic forgetting in neural networks",
+    "pdf_sha256": "5e181839191ab4582da2b5ff9666f5222e40b8b8d2f1cdf4fa7100b3a58d7a29"
+   },
+   "question": "Based on their weight-perturbation test on a single-game DQN, what do the authors identify as the chief limitation of their EWC implementation?",
+   "paraphrase": "When they jiggled the weights of a network trained on a single game, what did that show about the weakness of their method?",
+   "answer": "Perturbing weights in the Fisher's nullspace hurt performance as much as perturbing along the inverse Fisher, so they are over-confident that certain parameters are unimportant. The chief limitation is that the implementation under-estimates parameter uncertainty.",
+   "must_mention": [
+    [
+     "underestimate",
+     "under-estimate",
+     "underestimating",
+     "under-estimating"
+    ],
+    [
+     "uncertainty"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 6,
+     "quote": "Empirically, however, we observe that perturbing in this space (orange) has the same effect as perturbing in the inverse Fisher space."
+    },
+    {
+     "page": 6,
+     "quote": "This suggests that we are over-confident about certain parameters being unimportant: it is therefore likely that the chief limitation of the current implementation is that it under-estimates parameter uncertainty."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The same experiment shows that inverse-Fisher perturbations are better tolerated than uniform ones, which validates the diagonal Fisher as an importance estimate. The Discussion (p7) also calls the point estimate of the posterior variance (Laplace approximation) a significant weakness; that is consistent with the answer but is not the 'chief limitation' sentence."
+  },
+  {
+   "id": "ewc-3",
+   "scope": "paper",
+   "kind": "mechanism",
+   "paper": {
+    "library_id": 78,
+    "doi": "10.1073/pnas.1611835114",
+    "arxiv": null,
+    "title": "Overcoming catastrophic forgetting in neural networks",
+    "pdf_sha256": "5e181839191ab4582da2b5ff9666f5222e40b8b8d2f1cdf4fa7100b3a58d7a29"
+   },
+   "question": "How do the authors measure the overlap between two tasks' Fisher information matrices?",
+   "paraphrase": "How do they quantify whether two tasks rely on the same weights?",
+   "answer": "They normalize each task's Fisher to unit trace and compute the Fréchet distance d² between the two, a metric on positive-semidefinite matrices bounded between 0 and 1. Overlap is defined as 1 − d²: 0 means the tasks depend on non-overlapping weights, and 1 means the Fishers are proportional.",
+   "must_mention": [
+    [
+     "Fréchet",
+     "Frechet"
+    ],
+    [
+     "1 - d",
+     "1 − d",
+     "one minus",
+     "1 minus"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 13,
+     "quote": "Precisely, we computed two tasks’ Fishers, F1 and F2, normalized these to each have unit trace, … then computed their Fréchet distance, a metric on the space of positive-semidefinite matrices"
+    },
+    {
+     "page": 13,
+     "quote": "We then define the overlap as 1 −d2, with a value of zero indicating that the two tasks depend on non-overlapping sets of weights"
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "The main text (p4, Fig. 2C) describes the overlap analysis and refers to Appendix 4.3 for the definition. The appendix calls the figure '3C', a typo in the paper."
+  },
+  {
+   "id": "ewc-4",
+   "scope": "paper",
+   "kind": "unanswerable",
+   "paper": {
+    "library_id": 78,
+    "doi": "10.1073/pnas.1611835114",
+    "arxiv": null,
+    "title": "Overcoming catastrophic forgetting in neural networks",
+    "pdf_sha256": "5e181839191ab4582da2b5ff9666f5222e40b8b8d2f1cdf4fa7100b3a58d7a29"
+   },
+   "question": "What accuracy does EWC achieve on the Split CIFAR-100 benchmark in this paper?",
+   "answer": "The paper does not report this. EWC is evaluated only on permuted MNIST (supervised) and on sequences of Atari 2600 games (reinforcement learning). CIFAR is never used.",
+   "must_mention": [],
+   "evidence": [],
+   "in_abstract": false,
+   "absent_terms_checked": [
+    "CIFAR",
+    "ImageNet",
+    "SVHN",
+    "Omniglot",
+    "split",
+    "accuracy",
+    "%",
+    "percent"
+   ],
+   "notes": "'CIFAR', 'accuracy' and '%' never occur. 'split' occurs once (the data split into tasks A and B in the Bayesian derivation). 'ImageNet' occurs only in a reference title. Library trap: the SDM paper (id 131) reports EWC baselines on Split CIFAR10/CIFAR100 (e.g. 0.12/0.16 on CIFAR100); those are not results from this paper."
+  },
+  {
+   "id": "lib-c1",
+   "scope": "library",
+   "kind": "find-paper",
+   "paper": {
+    "library_id": 131,
+    "doi": "10.48550/arxiv.2303.11934",
+    "arxiv": "2303.11934",
+    "title": "Sparse Distributed Memory is a Continual Learner",
+    "pdf_sha256": "1d480c7eeed66a6810a59bf68ab30b871945dff726b42d0eeefc3373d2d7ccd1"
+   },
+   "question": "Which paper in my library maps a one-hidden-layer MLP onto cerebellar circuitry, with granule cells as the hidden neurons and their Purkinje-cell synapses as stored values, to build a continual learner that needs no replay or task labels?",
+   "paraphrase": "Which of my papers relates a network with one hidden layer to the cerebellum in order to learn tasks one after another without forgetting?",
+   "answer": "Sparse Distributed Memory is a Continual Learner (Bricken, Davies, Singh, Krotov & Kreiman, ICLR 2023).",
+   "must_mention": [
+    [
+     "Sparse Distributed Memory is a Continual Learner",
+     "Sparse Distributed Memory"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 1,
+     "quote": "Here, we use Sparse Distributed Memory (SDM) to modify a Multi-Layered Perceptron (MLP) with features from a cerebellum-like neural circuit"
+    },
+    {
+     "page": 17,
+     "quote": "Each Granule cell represents an SDM neuron x, with its dendrites as the neuron address vector xa and post-synaptic connections with Purkinje cells as the storage vector xv."
+    }
+   ],
+   "in_abstract": false,
+   "absent_terms_checked": [],
+   "notes": "Distractors: EWC (78) and the Parisi review cover continual learning but not cerebellar MLPs. Krotov–Hopfield and dense associative memory papers concern associative memory or local learning but not a cerebellum mapping. Hawkins' papers model the neocortex, not the cerebellum."
+  },
+  {
+   "id": "lib-c2",
+   "scope": "library",
+   "kind": "find-paper",
+   "paper": {
+    "library_id": 28,
+    "doi": "10.1016/j.neunet.2019.06.001",
+    "arxiv": "1905.04101",
+    "title": "Biologically plausible deep learning — But how far can we go with shallow networks?",
+    "pdf_sha256": "ffc95eb2bc50fe23d8221be9df1a08550dd7f73176134957dfa49665da85af4d"
+   },
+   "question": "Which paper in my library benchmarks a network whose only trained layer is the readout, with hidden weights fixed as localized random projections or random Gabor filters, and implements it with leaky integrate-and-fire neurons whose readout is trained by STDP?",
+   "paraphrase": "Which of my papers asks how good a network can be when only the last layer learns and the hidden layer is fixed to random local or Gabor-like filters, including a spiking version?",
+   "answer": "Biologically plausible deep learning — But how far can we go with shallow networks? (Illing, Gerstner & Brea, Neural Networks 2019).",
+   "must_mention": [
+    [
+     "shallow networks",
+     "how far can we go"
+    ]
+   ],
+   "evidence": [
+    {
+     "page": 6,
+     "quote": "To keep it simple we implement the two models with fixed random weights with LIF neurons"
+    },
+    {
+     "page": 6,
+     "quote": "The output layer weights W2 are trained with a supervised spike timing dependent plasticity (STDP) rule."
+    }
+   ],
+   "in_abstract": true,
+   "absent_terms_checked": [],
+   "notes": "The abstract also describes fixed localized random/Gabor hidden layers with LIF neurons and an STDP readout, so in_abstract is true; the evidence quotes come from the body. Distractors: Krotov–Hopfield (also a single hidden layer, but trained by a competing Hebbian rule, rate-based, no STDP), SoftHebb, feedback alignment, equilibrium propagation and forward-forward all train the hidden layers."
+  }
+ ]
+}

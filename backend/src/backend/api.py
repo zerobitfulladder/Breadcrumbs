@@ -5,16 +5,17 @@ import json
 import logging
 import os
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import db, ingest, pdffind, pdftext, photos, store
+from . import db, ingest, passages, pdffind, pdftext, photos, store
 from .sources.http import SourceError, make_client
 
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +46,10 @@ def _startup() -> None:
     db.init_db()
     with db.session() as conn:
         _apply_api_keys(conn)
+    # Bring passage search up to date with the PDFs on disk: new files, and
+    # any indexed by an older chunker or model. On a thread, so the server
+    # answers at once; a search meanwhile indexes what it needs itself.
+    passages.schedule()
 
 
 # ---------------------------------------------------------------------------
@@ -312,13 +317,24 @@ def chat_history(
     thread should show the same tool activity a live one does, rather than
     losing the record of what the assistant actually did.
     """
+    from .ai import provenance
     from .ai import tools as tool_mod
 
     rows = conn.execute(
-        "SELECT id, role, content, tool_calls, tool_call_id, tool_name, created_at "
-        "FROM chat_messages WHERE session_id = ? ORDER BY id",
+        "SELECT id, role, content, rendered, citations, tool_calls, tool_call_id, tool_name, "
+        "created_at FROM chat_messages WHERE session_id = ? ORDER BY id",
         (session_id,),
     ).fetchall()
+    # Each answer's record, so a restored thread shows which model wrote it
+    # and how its citations checked out, exactly as the live one did.
+    runs = {
+        r["answer_message_id"]: provenance.public(conn, r["id"])
+        for r in conn.execute(
+            "SELECT id, answer_message_id FROM chat_turns "
+            "WHERE session_id = ? AND answer_message_id IS NOT NULL",
+            (session_id,),
+        )
+    }
 
     messages: list[dict[str, Any]] = []
     pending: list[dict[str, Any]] = []      # tools run since the last answer
@@ -349,7 +365,11 @@ def chat_history(
                     by_call[call["id"]] = entry
             if (r["content"] or "").strip():
                 messages.append(
-                    {"id": r["id"], "role": "assistant", "content": r["content"],
+                    {"id": r["id"], "role": "assistant",
+                     # As shown: citations rewritten to their check results.
+                     "content": r["rendered"] or r["content"],
+                     "citations": json.loads(r["citations"]) if r["citations"] else [],
+                     "run": runs.get(r["id"]),
                      "tools": pending, "created_at": r["created_at"]}
                 )
                 pending, by_call = [], {}
@@ -371,6 +391,67 @@ def chat_history(
         messages.append({"id": None, "role": "assistant", "content": "",
                          "tools": pending, "interrupted": True})
     return {"messages": messages}
+
+
+@app.get("/api/chat/sessions/{session_id}/export")
+def export_chat_session(
+    session_id: int, conn: sqlite3.Connection = Depends(db.get_conn)
+) -> Response:
+    """A conversation with everything needed to audit it, as one JSON file.
+
+    Each turn carries what produced it: the system prompt as sent (with the
+    page the user was reading), the models the provider reports serving it,
+    the hashes of the tool definitions and of every PDF read, token counts,
+    and the verdict on every citation. Every message is included, tool calls
+    and their results among them, in the shape the model saw them. API keys
+    are never part of a turn, so nothing here needs redacting.
+    """
+    from .ai import provenance
+
+    session = conn.execute("SELECT * FROM chat_sessions WHERE id = ?", (session_id,)).fetchone()
+    if session is None:
+        raise HTTPException(404, "No such conversation")
+    messages = []
+    for r in conn.execute(
+        "SELECT * FROM chat_messages WHERE session_id = ? ORDER BY id", (session_id,)
+    ):
+        m = dict(r)
+        for key in ("tool_calls", "citations"):
+            if m.get(key):
+                m[key] = json.loads(m[key])
+        messages.append(m)
+    turns = [
+        provenance.load(r)
+        for r in conn.execute(
+            "SELECT * FROM chat_turns WHERE session_id = ? ORDER BY id", (session_id,)
+        )
+    ]
+    # Group messages under the turn they belong to: from its user message up
+    # to the next turn's.
+    starts = [t["user_message_id"] or 0 for t in turns]
+    for i, turn in enumerate(turns):
+        end = starts[i + 1] if i + 1 < len(starts) else None
+        turn["messages"] = [
+            m for m in messages
+            if m["id"] >= starts[i] and (end is None or m["id"] < end)
+        ]
+    body = {
+        "format": "breadcrumbs-transcript/1",
+        "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "app_version": provenance.app_version(),
+        "session": dict(session),
+        "turns": turns,
+        # Messages from before turns were recorded have no turn to sit under.
+        "unrecorded_messages": [
+            m for m in messages if not starts or m["id"] < min(starts)
+        ],
+    }
+    name = f"breadcrumbs-conversation-{session_id}.json"
+    return Response(
+        json.dumps(body, indent=1, ensure_ascii=False, default=str),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
 
 
 class SessionPatch(BaseModel):
@@ -839,6 +920,8 @@ async def upload_pdf(
     rel = f"pdfs/{paper_id}.pdf"
     (db.library_root() / rel).write_bytes(body)
     conn.execute("UPDATE papers SET pdf_path = ? WHERE id = ?", (rel, paper_id))
+    conn.commit()           # the indexer reads it on its own connection
+    passages.schedule(paper_id)
     return {"paper_id": paper_id, "pdf_path": rel, "bytes": len(body)}
 
 
@@ -1492,6 +1575,39 @@ def paper_pdf_text(
     if page is not None:
         pages = [p for p in pages if p["page"] == page]
     return {"pages": pages, "page_count": len(pages)}
+
+
+@app.get("/api/papers/{paper_id}/locate")
+def locate_quote(
+    paper_id: int,
+    quote: str = Query(min_length=1),
+    page: int | None = None,
+    conn: sqlite3.Connection = Depends(db.get_conn),
+) -> dict[str, Any]:
+    """Where a quote sits in the PDF, checked the way a citation is.
+
+    The reader uses it to open a citation from another tab: the link carries
+    the quote, and the passage is found afresh in whatever file is stored now.
+    """
+    path = pdftext.pdf_path(conn, paper_id)
+    if path is None:
+        raise HTTPException(404, "No PDF stored for this paper")
+    hit = pdftext.locate_quote(path, quote, page)
+    if hit is None:
+        raise HTTPException(404, "That passage is not in this PDF")
+    return {"page": hit["page"], "rects": hit["rects"], "text": hit["text"]}
+
+
+@app.get("/api/passages/status")
+def passage_status(conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, Any]:
+    return passages.status(conn)
+
+
+@app.post("/api/passages/index")
+def passage_reindex() -> dict[str, str]:
+    """Index every stale PDF on the background worker."""
+    passages.schedule()
+    return {"status": "scheduled"}
 
 
 @app.get("/api/timeline")

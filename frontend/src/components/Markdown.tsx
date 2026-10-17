@@ -4,6 +4,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
+import type { Citation } from "../api";
 import "./Markdown.css";
 
 interface Props {
@@ -13,6 +14,71 @@ interface Props {
    * `[title](paper:10.1234/xyz)`, which renders here as a button.
    */
   onPaperLink?: (identifier: string, label: string) => void;
+  /**
+   * What the server found for each quote the answer cited. The text refers to
+   * them as `[label](citation:n)`; without this list such a link renders as
+   * plain text, never as a claim that something was checked.
+   */
+  citations?: Citation[];
+  /** Called when a verified citation is clicked, to show the passage. */
+  onCitation?: (c: Citation) => void;
+}
+
+/** How each verdict reads on the chip and in its tooltip. */
+function describeCitation(c: Citation): { label: string; tone: string; title: string } {
+  const source = c.title ? `${c.title}${c.year ? ` (${c.year})` : ""}` : `paper ${c.paper_id}`;
+  const quote = `“${c.matched || c.quote}”`;
+  switch (c.status) {
+    case "verified":
+      return c.where === "abstract"
+        ? { label: "abstract", tone: "ok", title: `Found in the abstract of ${source}\n${quote}` }
+        : {
+            label: `p. ${c.page}`,
+            tone: "ok",
+            title:
+              `Found word for word on page ${c.page} of ${source}. Click to see it.\n${quote}` +
+              (c.page_claimed && c.page_claimed !== c.page ? `\n(cited as page ${c.page_claimed})` : ""),
+          };
+    case "not_found":
+      return {
+        label: "not found",
+        tone: "bad",
+        title: `This quote is not in ${source} (checked its ${(c.checked ?? ["text"]).join(" and ")}). Treat the claim as unverified.\n“${c.quote}”`,
+      };
+    case "unknown_paper":
+      return { label: "no such paper", tone: "bad", title: `There is no paper ${c.paper_id} in the library.` };
+    case "too_short":
+      return { label: "unchecked", tone: "warn", title: `Too short to identify a passage, so not checked.\n“${c.quote}”` };
+    case "no_quote":
+      return { label: "unchecked", tone: "warn", title: `Cites ${source} without a quote, so nothing was checked.` };
+    case "no_source":
+      return { label: "unchecked", tone: "warn", title: `${source} has neither a PDF nor an abstract to check against.` };
+  }
+}
+
+/**
+ * Callouts written by the assistant into a note: a blockquote that opens with
+ * `[!bread] Bread · date · model`. Marked so the note shows whose words they
+ * are, however long ago they were written.
+ */
+function remarkBreadCallouts() {
+  return (tree: MdNode) => {
+    const walk = (node: MdNode) => {
+      for (const child of node.children ?? []) {
+        if (child.type === "blockquote") {
+          const first = child.children?.[0];
+          const lead = first?.type === "paragraph" ? first.children?.[0] : undefined;
+          if (lead?.type === "text" && lead.value?.startsWith("[!bread]")) {
+            lead.value = lead.value.replace(/^\[!bread\]\s*/, "");
+            child.data = { hProperties: { className: ["md-bread"] } };
+            first!.data = { hProperties: { className: ["md-bread-head"] } };
+          }
+        }
+        walk(child);
+      }
+    };
+    walk(tree);
+  };
 }
 
 /** A DOI written in prose, e.g. 10.1038/323533a0. */
@@ -24,6 +90,7 @@ interface MdNode {
   value?: string;
   url?: string;
   children?: MdNode[];
+  data?: { hProperties?: Record<string, unknown> };
 }
 
 /**
@@ -85,7 +152,7 @@ function remarkDoiLinks() {
  * Models write Markdown whether or not you ask them to, so rendering it is not
  * a nicety — unrendered, every reply arrives full of asterisks and pipes.
  */
-function Markdown({ children, onPaperLink }: Props) {
+function Markdown({ children, onPaperLink, citations, onCitation }: Props) {
   return (
     <div className="md">
       <ReactMarkdown
@@ -94,12 +161,35 @@ function Markdown({ children, onPaperLink }: Props) {
         // the page itself instead of opening the preview. Let ours through and
         // sanitise everything else as normal.
         urlTransform={(url) =>
-          url.startsWith("paper:") ? url : defaultUrlTransform(url)
+          url.startsWith("paper:") || url.startsWith("citation:")
+            ? url
+            : defaultUrlTransform(url)
         }
-        remarkPlugins={[remarkGfm, remarkMath, remarkDoiLinks]}
+        remarkPlugins={[remarkGfm, remarkMath, remarkDoiLinks, remarkBreadCallouts]}
         rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
         components={{
           a: ({ href, children: text }) => {
+            // A quote the server checked. The chip says what it found, never
+            // what the model claimed: a verified quote shows the page it is
+            // really on, and one that was not found says so.
+            if (href?.startsWith("citation:")) {
+              const c = citations?.find((x) => x.n === Number(href.slice(9)));
+              if (!c) return <>{text}</>;
+              const { label, tone, title } = describeCitation(c);
+              const openable = c.status === "verified" && c.where === "pdf";
+              return (
+                <button
+                  type="button"
+                  className={`md-cite is-${tone}`}
+                  title={title}
+                  onClick={openable ? () => onCitation?.(c) : undefined}
+                  disabled={!openable}
+                >
+                  <span aria-hidden>{tone === "ok" ? "✓" : tone === "bad" ? "✗" : "?"}</span>
+                  {label}
+                </button>
+              );
+            }
             // A paper the assistant is suggesting: rendered as a button that
             // opens the preview, so several can sit inline in one answer
             // rather than each one interrupting with a modal.

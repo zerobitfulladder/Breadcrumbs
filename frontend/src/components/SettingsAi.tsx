@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "../api";
-import type { AiCapabilities, AiEndpoint, AiModel, AiProvider, Settings } from "../api";
+import type {
+  AiCapabilities, AiEndpoint, AiModel, AiProvider, PassageStatus, Settings,
+} from "../api";
 import ModelPicker, { perMillion } from "./ModelPicker";
 
 interface Props {
@@ -19,6 +21,29 @@ export default function SettingsAi({ settings, onField, onSave, saving }: Props)
   const [routing, setRouting] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [index, setIndex] = useState<PassageStatus | null>(null);
+
+  // How much of the library passage search covers. Polled while indexing is
+  // under way, which on a first start can take a minute or two.
+  useEffect(() => {
+    let live = true;
+    let timer = 0;
+    const poll = async () => {
+      try {
+        const s = await api.passageStatus();
+        if (!live) return;
+        setIndex(s);
+        if (s.papers_stale > 0) timer = window.setTimeout(poll, 3000);
+      } catch {
+        /* the section just stays empty */
+      }
+    };
+    void poll();
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -273,6 +298,32 @@ export default function SettingsAi({ settings, onField, onSave, saving }: Props)
           </button>
           <button onClick={() => void load()}>Refresh status</button>
         </div>
+      </section>
+
+      <section>
+        <h3>Passage search</h3>
+        <p className="set-note">
+          The full text of every stored PDF, cut into passages the assistant searches by
+          wording (SQLite full-text) and by meaning (a small embedding model run on this
+          machine). Each hit names its page, which is what lets an answer quote it and be
+          checked. Indexing happens by itself when a PDF arrives.
+        </p>
+        {index && (
+          <p className="set-note">
+            {index.passages.toLocaleString()} passages from{" "}
+            {index.papers_with_pdf - index.papers_stale} of {index.papers_with_pdf} PDFs
+            {index.papers_stale > 0 && <> — indexing {index.papers_stale} more…</>}
+            . {index.embedder ? (
+              <>
+                Embeddings: <code>{index.embedder}</code> ({index.embedded.toLocaleString()}{" "}
+                passages)
+              </>
+            ) : (
+              "Keyword search only."
+            )}
+            {index.model_error && <span className="set-warn"> Model unavailable: {index.model_error}</span>}
+          </p>
+        )}
       </section>
 
       <section>

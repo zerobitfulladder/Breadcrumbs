@@ -313,6 +313,9 @@ def _store(paper_id: int, body: bytes, url: str) -> str:
             "UPDATE papers SET pdf_path = ?, oa_pdf_url = ? WHERE id = ?",
             (rel, url, paper_id),
         )
+    from . import passages
+
+    passages.schedule(paper_id)
     return rel
 
 

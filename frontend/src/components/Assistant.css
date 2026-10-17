@@ -291,3 +291,27 @@
   border: none; box-shadow: none;
 }
 .as-root.is-docked .as-bar { cursor: default; }
+
+.as-export { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Under an answer: how much of it was checked, and what produced it. */
+.ar-root { margin-top: 6px; font-size: 10.5px; line-height: 1.5; color: var(--text-dim); }
+.ar-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.ar-ok { color: var(--ok-fg); }
+.ar-bad { color: var(--danger-fg); }
+.ar-warn { color: var(--warn-fg); }
+.ar-dim { color: var(--text-dim); opacity: 0.8; }
+.ar-toggle {
+  margin-left: auto; padding: 0 4px; font: inherit; font-size: 10.5px;
+  color: var(--text-dim); background: none; border: none; cursor: pointer;
+}
+.ar-toggle:hover { color: var(--text); }
+.ar-repair { margin-top: 2px; color: var(--warn-fg); }
+.ar-detail {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 10px;
+  margin: 6px 0 0; padding: 6px 8px; background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.ar-detail dt { color: var(--text-dim); opacity: 0.75; }
+.ar-detail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--text); }
+.ar-detail code { font-size: 10px; }

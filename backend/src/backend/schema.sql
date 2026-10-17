@@ -336,6 +336,40 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages ON chat_messages(session_id, id);
 
+-- One row per exchange: what was sent, to which model, and what that model
+-- read. A model cannot be re-run to the same answer, even at temperature zero,
+-- so reproducing a turn means being able to see exactly what went in. The
+-- system prompt is stored whole because it carries the page the user was
+-- reading; the tool definitions are stored as a hash plus the app's commit,
+-- which together name them exactly.
+CREATE TABLE IF NOT EXISTS chat_turns (
+    id                INTEGER PRIMARY KEY,
+    session_id        INTEGER NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    -- Editing a message deletes it and what followed; its record goes too.
+    user_message_id   INTEGER REFERENCES chat_messages(id) ON DELETE CASCADE,
+    answer_message_id INTEGER REFERENCES chat_messages(id) ON DELETE SET NULL,
+    status            TEXT NOT NULL DEFAULT 'running',   -- running | done | error | stopped
+    provider          TEXT,
+    model             TEXT,          -- as chosen in settings
+    route             TEXT,          -- OpenRouter upstream pin, if any
+    thinking          TEXT,
+    app_version       TEXT,          -- git commit of this checkout, "+dirty" if edited
+    system_prompt     TEXT,
+    system_sha256     TEXT,
+    tools_sha256      TEXT,
+    responses         TEXT,          -- JSON: per round, the model and request the provider reports
+    documents         TEXT,          -- JSON: each PDF read, with its SHA-256
+    usage             TEXT,          -- JSON: tokens summed over the turn
+    rounds            INTEGER,
+    citations         TEXT,          -- JSON: how the answer's quotes checked out
+    repair            TEXT,          -- JSON: the first draft and its failed quotes, if corrected
+    error             TEXT,
+    started_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at       TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_turns ON chat_turns(session_id, id);
+
 -- Links the assistant finds and verifies for an author. Misses are recorded
 -- too, so a fruitless search is not repeated on every visit.
 CREATE TABLE IF NOT EXISTS author_links (
@@ -489,6 +523,51 @@ CREATE TABLE IF NOT EXISTS highlights (
 );
 
 CREATE INDEX IF NOT EXISTS idx_hl_paper ON highlights(paper_id);
+
+-- ---------------------------------------------------------------------------
+-- passages: the full text of stored PDFs, cut up for search
+-- ---------------------------------------------------------------------------
+-- Derived data, rebuilt from the PDF whenever its hash changes, so nothing
+-- here is ever the only copy of anything. A passage never crosses a page, so
+-- every hit can name the page it came from and be cited from there.
+CREATE TABLE IF NOT EXISTS passages (
+    id         INTEGER PRIMARY KEY,
+    paper_id   INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+    page       INTEGER NOT NULL,
+    seq        INTEGER NOT NULL,           -- order within the paper
+    text       TEXT NOT NULL,
+    references_section INTEGER NOT NULL DEFAULT 0,   -- part of the bibliography
+    embedding  BLOB,                       -- float32, unit length; NULL if keyword-only
+    UNIQUE (paper_id, seq)
+);
+
+CREATE INDEX IF NOT EXISTS idx_passages_paper ON passages(paper_id);
+
+-- Which file each paper's passages came from, and how they were made. A
+-- different hash, chunker or embedder means the passages are stale.
+CREATE TABLE IF NOT EXISTS passage_index (
+    paper_id   INTEGER PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE,
+    pdf_sha256 TEXT NOT NULL,
+    chunker    TEXT NOT NULL,
+    embedder   TEXT,
+    passages   INTEGER NOT NULL,
+    indexed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS passages_fts USING fts5(
+    text, content='passages', content_rowid='id', tokenize='porter unicode61'
+);
+
+CREATE TRIGGER IF NOT EXISTS passages_fts_ai AFTER INSERT ON passages BEGIN
+    INSERT INTO passages_fts(rowid, text) VALUES (new.id, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS passages_fts_ad AFTER DELETE ON passages BEGIN
+    INSERT INTO passages_fts(passages_fts, rowid, text) VALUES ('delete', old.id, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS passages_fts_au AFTER UPDATE OF text ON passages BEGIN
+    INSERT INTO passages_fts(passages_fts, rowid, text) VALUES ('delete', old.id, old.text);
+    INSERT INTO passages_fts(rowid, text) VALUES (new.id, new.text);
+END;
 
 -- ---------------------------------------------------------------------------
 -- reading log: when you actually engaged with a paper

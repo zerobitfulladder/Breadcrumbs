@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, chatStream } from "../api";
-import type { ChatContext, ChatSession, ToolActivity } from "../api";
+import type {
+  ChatContext, ChatSession, Citation, CitationTally, RunRecord, ToolActivity,
+} from "../api";
 import { kindForTool, notifyChange } from "../live";
+import AnswerRecord from "./AnswerRecord";
 import AutoTextarea from "./AutoTextarea";
 import Markdown from "./Markdown";
 import PaperPreviewCard from "./PaperPreviewCard";
@@ -32,6 +35,11 @@ interface Turn {
   messageId?: number;
   /** The turn was cut off, either by Stop or by the next message. */
   interrupted?: boolean;
+  /** What the server found for each quote the answer cited. */
+  citations?: Citation[];
+  check?: CitationTally;
+  /** The turn's record: model, rounds, tokens, documents read. */
+  run?: RunRecord | null;
 }
 
 interface Frame {
@@ -102,6 +110,27 @@ export default function Assistant({
   const openProposal = useCallback(
     (identifier: string) => setProposal({ identifier }),
     [],
+  );
+  /**
+   * Show a cited passage. In the reader, on the paper it cites, the page
+   * scrolls to it; anywhere else it opens in a reader of its own, which finds
+   * the quote again in whatever file is stored by then.
+   */
+  const readingId = context.tab === "reader" ? context.paper?.id : undefined;
+  const openCitation = useCallback(
+    (c: Citation) => {
+      if (c.paper_id === readingId && onReveal && c.page) {
+        onReveal({ page: c.page, rects: c.rects ?? [] });
+        return;
+      }
+      const query = new URLSearchParams({
+        paper: String(c.paper_id),
+        ...(c.page ? { page: String(c.page) } : {}),
+        quote: c.quote,
+      });
+      window.open(`${window.location.pathname}?${query}`, "_blank", "noopener");
+    },
+    [readingId, onReveal],
   );
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<ToolActivity[]>([]);
@@ -265,7 +294,6 @@ export default function Assistant({
     setError(null);
     setActivity([]);
 
-    let streamed = "";
     const seen: ToolActivity[] = [];
     let wrote = false;
 
@@ -303,8 +331,16 @@ export default function Assistant({
             }
             return next;
           }),
-        onText: (chunk) => {
-          streamed += chunk;
+        onText: (t) => {
+          // Text written alongside a tool call is often the answer itself,
+          // with the final message only a closing line. Shown as it arrives,
+          // after the steps that led to it, as the stored thread shows it.
+          setTurns((all) => [
+            ...all,
+            { role: "assistant", text: t.text, tools: [...seen], citations: t.citations },
+          ]);
+          seen.splice(0);
+          setActivity([]);
         },
         onToolCall: (t) => {
           seen.push({ name: t.name, args: t.args, status: "running" });
@@ -327,12 +363,33 @@ export default function Assistant({
           setActivity([...seen]);
         },
         onProposal: (p) => setProposal(p),
+        onCheck: (c) => {
+          // The correction round is part of what happened, so it shows in the
+          // tool trail like any other step rather than happening silently.
+          seen.push({
+            name: "check_citations",
+            status: "failed",
+            summary:
+              c.reason === "uncited"
+                ? "claims about the paper with no citation; asked Bread to quote them"
+                : `${c.failed.length} of ${c.total} quotes not verified; asked Bread to correct them`,
+            preview: c.failed.map((f) => `[${f.n}] ${f.status}: “${f.quote}”`).join("\n"),
+          });
+          setActivity([...seen]);
+        },
         onReveal: (r) =>
           onReveal?.({ page: r.page, rects: Array.isArray(r.rects) ? r.rects : [] }),
         onMessage: (m) => {
           setTurns((t) => [
             ...t,
-            { role: "assistant", text: m.text || streamed, tools: [...seen] },
+            {
+              role: "assistant",
+              text: m.text,
+              tools: [...seen],
+              citations: m.citations,
+              check: m.check,
+              run: m.run,
+            },
           ]);
           setActivity([]);
         },
@@ -380,6 +437,8 @@ export default function Assistant({
           tools: m.tools,
           messageId: m.role === "user" ? (m.id ?? undefined) : undefined,
           interrupted: m.interrupted,
+          citations: m.citations,
+          run: m.run,
         })),
       );
     } catch {
@@ -539,6 +598,16 @@ export default function Assistant({
           <button className="as-tab-new" onClick={newThread} title="Start a new conversation">
             +
           </button>
+          {sessionId != null && (
+            <a
+              className="as-tab-new as-export"
+              href={api.chatExportUrl(sessionId)}
+              download
+              title="Download this conversation with its full record: prompts, models, documents read and every citation check"
+            >
+              ⤓
+            </a>
+          )}
         </div>
 
         <div className="as-log" ref={scrollRef}>
@@ -597,9 +666,23 @@ export default function Assistant({
               {t.interrupted ? (
                 <div className="as-interrupted">Stopped</div>
               ) : t.role === "assistant" ? (
-                <Markdown onPaperLink={openProposal}>
-                  {t.text}
-                </Markdown>
+                <>
+                  <Markdown
+                    onPaperLink={openProposal}
+                    citations={t.citations}
+                    onCitation={openCitation}
+                  >
+                    {t.text}
+                  </Markdown>
+                  {t.run && (
+                    <AnswerRecord
+                      text={t.text}
+                      citations={t.citations}
+                      check={t.check}
+                      run={t.run}
+                    />
+                  )}
+                </>
               ) : (
                 editing !== i && (
                   <div className="as-text">

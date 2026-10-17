@@ -133,6 +133,34 @@ export default function Reader({ paperId }: Props) {
     api.pdfOutline(paperId).then((d) => setOutline(d.outline)).catch(() => setOutline([]));
   }, [paperId, version]);
 
+  // Opened from a citation in another tab: find the quoted passage in the file
+  // stored now and show it, or fall back to the page it was cited on. Located
+  // afresh rather than carried in the link, so a replaced PDF still lands
+  // right or visibly does not.
+  useEffect(() => {
+    if (!paper?.pdf_path) return;
+    const params = new URLSearchParams(window.location.search);
+    const quote = params.get("quote");
+    const page = Number(params.get("page")) || null;
+    if (!quote && !page) return;
+    let cancelled = false;
+    (async () => {
+      let target = page ? { page, rects: [] as { x: number; y: number; w: number; h: number }[] } : null;
+      if (quote) {
+        try {
+          const hit = await api.locateQuote(paperId, quote, page);
+          target = { page: hit.page, rects: hit.rects };
+        } catch {
+          /* not in this file any more; the cited page is the best left */
+        }
+      }
+      if (!cancelled && target) setReveal({ ...target, token: Date.now() });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [paperId, paper?.pdf_path]);
+
   useEffect(() => {
     const DOUBLE_TAP_MS = 400;
     let lastShift = 0;

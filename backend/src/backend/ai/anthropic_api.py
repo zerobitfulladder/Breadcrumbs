@@ -273,6 +273,10 @@ async def chat(
         "tool_calls": calls,
         "reasoning": "\n".join(reasoning),
         "usage": _usage(resp.usage),
+        # For the turn's record, in the same shape the OpenAI-style client
+        # reports. No temperature is sent, so the API default applies.
+        "served": {"model": resp.model, "id": resp.id, "finish_reason": resp.stop_reason},
+        "sent": {k: request[k] for k in ("thinking", "output_config") if k in request},
     }
 
 

@@ -1,0 +1,1713 @@
+{
+ "set_sha256": "5c06a5a0748d288fcaa03de1d67427fd4a9351fc509acd68a5842dcc59cf3ec2",
+ "chunker": "blocks-1100/v2",
+ "embedder": "BAAI/bge-small-en-v1.5",
+ "summary": {
+  "question/paper/keyword": {
+   "n": 27,
+   "hits": {
+    "1": 0.7407407407407407,
+    "3": 0.9259259259259259,
+    "5": 0.9629629629629629,
+    "10": 1.0
+   },
+   "mrr": 0.8325102880658436
+  },
+  "question/paper/semantic": {
+   "n": 27,
+   "hits": {
+    "1": 0.6296296296296297,
+    "3": 0.8518518518518519,
+    "5": 0.8888888888888888,
+    "10": 0.9259259259259259
+   },
+   "mrr": 0.745679012345679
+  },
+  "question/paper/hybrid": {
+   "n": 27,
+   "hits": {
+    "1": 0.6666666666666666,
+    "3": 0.8148148148148148,
+    "5": 0.8888888888888888,
+    "10": 0.9629629629629629
+   },
+   "mrr": 0.7629629629629631
+  },
+  "question/library/keyword": {
+   "n": 6,
+   "hits": {
+    "1": 1.0,
+    "3": 1.0,
+    "5": 1.0,
+    "10": 1.0
+   },
+   "mrr": 1.0
+  },
+  "question/library/semantic": {
+   "n": 6,
+   "hits": {
+    "1": 0.8333333333333334,
+    "3": 1.0,
+    "5": 1.0,
+    "10": 1.0
+   },
+   "mrr": 0.9166666666666666
+  },
+  "question/library/hybrid": {
+   "n": 6,
+   "hits": {
+    "1": 1.0,
+    "3": 1.0,
+    "5": 1.0,
+    "10": 1.0
+   },
+   "mrr": 1.0
+  },
+  "paraphrase/paper/keyword": {
+   "n": 27,
+   "hits": {
+    "1": 0.3333333333333333,
+    "3": 0.7407407407407407,
+    "5": 0.7777777777777778,
+    "10": 0.8888888888888888
+   },
+   "mrr": 0.5371840094062316
+  },
+  "paraphrase/paper/semantic": {
+   "n": 27,
+   "hits": {
+    "1": 0.3333333333333333,
+    "3": 0.7037037037037037,
+    "5": 0.8518518518518519,
+    "10": 0.8518518518518519
+   },
+   "mrr": 0.5290123456790123
+  },
+  "paraphrase/paper/hybrid": {
+   "n": 27,
+   "hits": {
+    "1": 0.37037037037037035,
+    "3": 0.7037037037037037,
+    "5": 0.8518518518518519,
+    "10": 0.8518518518518519
+   },
+   "mrr": 0.5679012345679012
+  },
+  "paraphrase/library/keyword": {
+   "n": 6,
+   "hits": {
+    "1": 0.6666666666666666,
+    "3": 0.8333333333333334,
+    "5": 1.0,
+    "10": 1.0
+   },
+   "mrr": 0.7916666666666666
+  },
+  "paraphrase/library/semantic": {
+   "n": 6,
+   "hits": {
+    "1": 0.6666666666666666,
+    "3": 0.8333333333333334,
+    "5": 0.8333333333333334,
+    "10": 1.0
+   },
+   "mrr": 0.7388888888888889
+  },
+  "paraphrase/library/hybrid": {
+   "n": 6,
+   "hits": {
+    "1": 1.0,
+    "3": 1.0,
+    "5": 1.0,
+    "10": 1.0
+   },
+   "mrr": 1.0
+  }
+ },
+ "rows": [
+  {
+   "id": "ff-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 7,
+   "page_rank": 7
+  },
+  {
+   "id": "ff-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "ff-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "ff-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ff-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "eqprop-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "eqprop-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "eqprop-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "eqprop-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "eqprop-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 5,
+   "page_rank": 5
+  },
+  {
+   "id": "eqprop-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "eqprop-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "eqprop-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "eqprop-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "fa-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "fa-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "fa-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "fa-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "fa-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "fa-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "fa-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "fa-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "fa-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "fa-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "fa-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "fa-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "fa-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "fa-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "fa-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "fa-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "fa-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "fa-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "lib-a1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "lib-a2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-a2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "kh-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "kh-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 6,
+   "page_rank": 6
+  },
+  {
+   "id": "kh-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "kh-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "kh-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "kh-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "kh-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "sh-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "sh-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "sh-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 9,
+   "page_rank": 9
+  },
+  {
+   "id": "sh-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sh-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "hdl-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 5,
+   "page_rank": 5
+  },
+  {
+   "id": "hdl-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "hdl-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "hdl-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "hdl-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "hdl-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "hdl-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "hdl-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "hdl-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "hdl-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 4
+  },
+  {
+   "id": "lib-b2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "lib-b2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 4
+  },
+  {
+   "id": "lib-b2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "lib-b2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sdm-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 9,
+   "page_rank": 9
+  },
+  {
+   "id": "sdm-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "sdm-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "sdm-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 10,
+   "page_rank": 10
+  },
+  {
+   "id": "sdm-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "sdm-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "sdm-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 10,
+   "page_rank": 10
+  },
+  {
+   "id": "sdm-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 6,
+   "page_rank": 6
+  },
+  {
+   "id": "sdm-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "sdm-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": null,
+   "page_rank": null
+  },
+  {
+   "id": "illing-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "illing-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "illing-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "illing-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "illing-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "illing-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "illing-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "illing-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "illing-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "illing-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "illing-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "illing-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "illing-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "illing-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "illing-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "illing-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "illing-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "illing-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "ewc-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-1",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 5,
+   "page_rank": 5
+  },
+  {
+   "id": "ewc-1",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "ewc-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-2",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "ewc-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-2",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 1
+  },
+  {
+   "id": "ewc-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "ewc-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "ewc-3",
+   "variant": "question",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "ewc-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "keyword",
+   "rank": 3,
+   "page_rank": 3
+  },
+  {
+   "id": "ewc-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "semantic",
+   "rank": 2,
+   "page_rank": 2
+  },
+  {
+   "id": "ewc-3",
+   "variant": "paraphrase",
+   "scope": "paper",
+   "mode": "hybrid",
+   "rank": 4,
+   "page_rank": 4
+  },
+  {
+   "id": "lib-c1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 2
+  },
+  {
+   "id": "lib-c1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 3
+  },
+  {
+   "id": "lib-c1",
+   "variant": "question",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 2
+  },
+  {
+   "id": "lib-c1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 5
+  },
+  {
+   "id": "lib-c1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 10,
+   "page_rank": null
+  },
+  {
+   "id": "lib-c1",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 5
+  },
+  {
+   "id": "lib-c2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 1,
+   "page_rank": 2
+  },
+  {
+   "id": "lib-c2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 4
+  },
+  {
+   "id": "lib-c2",
+   "variant": "question",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 2
+  },
+  {
+   "id": "lib-c2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "keyword",
+   "rank": 2,
+   "page_rank": 7
+  },
+  {
+   "id": "lib-c2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "semantic",
+   "rank": 1,
+   "page_rank": 6
+  },
+  {
+   "id": "lib-c2",
+   "variant": "paraphrase",
+   "scope": "library",
+   "mode": "hybrid",
+   "rank": 1,
+   "page_rank": 7
+  }
+ ]
+}

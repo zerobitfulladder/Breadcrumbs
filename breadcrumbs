@@ -395,12 +395,13 @@ def cmd_pages(args: argparse.Namespace) -> None:
 
 
 def cmd_check(args: argparse.Namespace) -> None:
-    """Typecheck the frontend and import the backend."""
+    """Typecheck the frontend, import the backend, and run the backend tests."""
     # `tsc --noEmit` on the root tsconfig checks nothing: it is a
     # references-only file with "files": [], so tsc has no inputs and exits 0
     # regardless. `-b` builds the referenced projects, which is what typechecks.
     run(["npx", "tsc", "-b", "--force"], cwd=FRONTEND)
     run([*UV, "python", "-c", "from backend.api import app; print('backend imports clean')"])
+    run(["uv", "run", "--project", str(BACKEND), "pytest", "-q", str(BACKEND / "tests")])
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
@@ -484,12 +485,14 @@ def build_parser() -> argparse.ArgumentParser:
         ("backfill", "backfill", "re-fetch every paper's full reference list, then relink"),
         ("redate", "redate", "fix years taken from a reprint or digitised deposit"),
         ("dedupe-authors", "dedupe_authors", "merge author rows that are the same person"),
+        ("index", "passages", "cut stored PDFs into passages and embed them for search"),
+        ("eval", "evals", "score the assistant on eval/questions.json (see eval/README.md)"),
     ):
         sub = subs.add_parser(name, help=help_text)
         sub.add_argument("rest", nargs=argparse.REMAINDER, help="passed to the module (--dry-run …)")
         sub.set_defaults(fn=maintenance(module))
 
-    add("check", cmd_check, "typecheck the frontend and import the backend")
+    add("check", cmd_check, "typecheck the frontend, import the backend, run its tests")
     add("clean", cmd_clean, "remove build output and Python caches")
     add("wipe", cmd_wipe, "also remove installed dependencies")
     return parser

@@ -288,7 +288,27 @@ async def chat(
         # UI can show that thinking happened without inventing it.
         "reasoning": msg.get("reasoning") or msg.get("reasoning_content") or "",
         "usage": body.get("usage") or {},
+        # For the turn's record. The model the provider reports can differ from
+        # the one asked for: aliases move, and OpenRouter names the upstream
+        # that served it. `sent` is what went out after any retry, so a dropped
+        # reasoning setting is recorded as dropped.
+        "served": _present({
+            "model": body.get("model"),
+            "id": body.get("id"),
+            "provider": body.get("provider"),
+            "system_fingerprint": body.get("system_fingerprint"),
+            "finish_reason": choices[0].get("finish_reason"),
+        }),
+        "sent": _present({
+            "temperature": payload.get("temperature"),
+            "reasoning_effort": payload.get("reasoning_effort"),
+            "provider": payload.get("provider"),
+        }),
     }
+
+
+def _present(values: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in values.items() if v is not None}
 
 
 async def complete_json(

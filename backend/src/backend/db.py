@@ -79,6 +79,11 @@ _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("highlights", "page_width", "REAL"),
     ("highlights", "page_height", "REAL"),
     ("highlights", "source", "TEXT"),
+    # An answer as shown, with its citations rewritten to point at their check
+    # results, beside the text the model actually wrote. `content` stays the
+    # model's own words because that is what it is shown again next turn.
+    ("chat_messages", "rendered", "TEXT"),
+    ("chat_messages", "citations", "TEXT"),
 )
 
 # Tables from earlier designs that are no longer part of the app.

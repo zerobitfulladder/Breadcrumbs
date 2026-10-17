@@ -194,6 +194,79 @@ Tool calls stream into the conversation as they happen, so a wrong action can be
 caught while it runs. SQL access is read-only through a separate connection, not
 a pattern check.
 
+### What it says, and what it checked
+
+Bread is an assistant, not a retrieval tool: it explains, connects and draws on
+what the model knows, and that is allowed. What is not allowed is for the
+model's own knowledge to look like the paper's. So statements come in kinds,
+and each is labelled for what it is.
+
+- **What a paper says** carries a quote. Bread writes
+  `[p. 4](cite:12 "the exact words")`, and after it answers the server looks for
+  every quote word for word in that paper's PDF, or its abstract when there is
+  no PDF. No model is involved in the check. Typesetting differences are
+  forgiven: case, punctuation, a word hyphenated across a line, a ligature, TeX
+  for a Greek letter, an ellipsis that skips words. A changed word is not.
+  - A quote that is found becomes a chip showing the page it is really on.
+    Click it to see the passage highlighted in the reader.
+  - One that is not found is struck through, not hidden.
+  - Before the answer is shown, Bread gets one round to correct any quote that
+    was not found, and that round shows in the tool trail.
+- **Bread's own explanation** carries no citation, and the line under each
+  answer says so: "3 quotes found in the paper · the rest is Bread's own
+  explanation".
+- **Library facts** come from tool results and need no quote.
+
+A found quote proves the words are in the paper. It does not prove they
+support the sentence they sit in. The chip is there so that judgement is one
+click away.
+
+Every turn is recorded: the system prompt as sent (with the page you were
+reading), the model the provider reports serving each round, the settings sent,
+a hash of the tool definitions, the app's commit, the SHA-256 of every PDF read,
+tokens, and the verdict on each citation. **record** under an answer shows it,
+and **⤓** downloads the whole conversation with its record as JSON. A model
+cannot be re-run to the same answer, so this is what reproducibility means here:
+being able to see exactly what produced an answer.
+
+Some facts are the server's to establish, not the model's:
+
+- A homepage is marked verified only if the server fetched that page during the
+  turn and found the author's name on it. The model can no longer say so itself.
+- Text Bread adds to your notes is set apart as a `[!bread]` callout with the
+  date and model, so it stays distinguishable from your own writing.
+- Web pages and search results reach the model marked as material to read,
+  never instructions.
+
+### Passage search
+
+Every stored PDF is cut into passages of a paragraph or two, never crossing a
+page, and searched two ways at once:
+
+- by wording, through SQLite full-text search
+- by meaning, through a small embedding model (`bge-small-en-v1.5`) that runs
+  on your CPU
+
+The two rankings are fused. Bread uses it to find where a paper says something
+and which papers in the library discuss something, and each hit names the page
+it can be cited from. Reference lists are left out.
+
+New PDFs are indexed on their own. The model is downloaded once (about 65 MB)
+into `~/.cache/breadcrumbs/models`, and nothing leaves the machine.
+`./breadcrumbs index` brings a library up to date by hand, and Settings → AI
+shows how much is covered.
+
+### Evaluation
+
+`eval/` holds 42 questions about nine papers in this library. Each has a gold
+answer, the facts a correct answer must state, and evidence quotes verified
+against the PDFs. Nine of them are questions the paper cannot answer, where the
+right response is to say so.
+
+`./breadcrumbs eval` scores retrieval for free, and the whole assistant on any
+model. [eval/README.md](eval/README.md) explains the method and its limits, and
+[eval/RESULTS.md](eval/RESULTS.md) has the numbers.
+
 Configure under Settings → AI. Anthropic, OpenAI, OpenRouter, Gemini and
 DeepSeek are all supported; the model picker is a combobox that matches tokens
 independently, so `gpt 4o` and `4o gpt` both find `openai/gpt-4o`.
@@ -254,11 +327,13 @@ All of these take `--dry-run`.
 | `./breadcrumbs backfill` | Re-fetches every paper's full reference list, then relinks. |
 | `./breadcrumbs redate` | Fixes years taken from a reprint or digitised deposit, using the earliest a source reports. |
 | `./breadcrumbs dedupe-authors` | Merges author rows that are the same person. |
+| `./breadcrumbs index` | Cuts new or changed PDFs into passages and embeds them. `--rebuild` redoes all. |
 
 `redate` and `backfill` depend on sources that rate-limit; re-run until they
 report nothing left unverified.
 
-`./breadcrumbs check` typechecks the frontend and imports the backend.
+`./breadcrumbs check` typechecks the frontend, imports the backend and runs its
+tests.
 `clean` removes build output, `wipe` also removes installed dependencies.
 
 ## Layout
@@ -271,9 +346,15 @@ backend/src/backend/
   sources/      one adapter per API, plus a rate-limited HTTP client
   store.py      upserts, link resolution, author merging, deletion
   ingest.py     fetch, merge, preview, save
-  pdftext.py    page text, outline, quote to rectangles
+  pdftext.py    page text, outline, quote to rectangles, the strict quote check
+  passages.py   passage index: chunking, embeddings, hybrid search
   ai/           agent loop, tools, skills
+    citations.py  checking every quote an answer cites
+    provenance.py the record of each turn
+  evals.py      the evaluation harness behind ./breadcrumbs eval
   api.py        HTTP routes
+backend/tests/  the deterministic parts of grounding, without a model
+eval/           questions, gold evidence, saved runs and results
 demo/           the tour video, the GIF and the screenshots above, recorded
                 from the live app (see demo/README.md)
 frontend/src/
