@@ -27,7 +27,7 @@ checkable:
 
 ![Left alone, the grid lights one paper at a time: magenta lines to the work it cites, cyan to the work that cites it](docs/trail.gif)
 
-**[Watch the two-and-a-half-minute tour](https://youtu.be/z0K-n6V5vAs)**: the
+**[Watch the two-and-a-half-minute tour](https://youtu.be/FB81vicyklU)**: the
 grid, a paper and its author, Bread on the library, then reading. It covers
 highlighting, asking about a passage, answers whose quotes are checked against
 the PDF, a question the paper cannot answer, and Bread marking the page itself.
