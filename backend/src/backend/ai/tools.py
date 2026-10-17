@@ -16,6 +16,7 @@ Two rules hold throughout:
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import sqlite3
@@ -1324,8 +1325,25 @@ def preview(result: dict[str, Any], limit: int = 900) -> str:
     return text if len(text) <= limit else text[:limit] + "\n…"
 
 
+def call_key(name: str, args: dict[str, Any]) -> str:
+    """A tool call's identity: its name and arguments, in a stable order."""
+    return f"{name}:{json.dumps(args, sort_keys=True, default=str)}"
+
+
+REPEATED = {
+    "repeated": True,
+    "note": (
+        "You already made this exact call, with these arguments, earlier in this turn. "
+        "Its result is above and has not changed, so it was not run again. Use that "
+        "result, or try different arguments."
+    ),
+}
+
+
 def summarise(name: str, result: dict[str, Any]) -> str:
     """One line for the UI, so tool activity is legible while it happens."""
+    if result.get("repeated"):
+        return f"{name}: same call as before, not run again"
     if "error" in result:
         return f"{name} failed: {str(result['error'])[:120]}"
     if "results" in result:

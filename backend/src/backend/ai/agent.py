@@ -358,6 +358,11 @@ async def _rounds(
     said_suggested: list[dict[str, Any]] = []
     said_ids: list[int] = []
     misses = 0
+    # Calls already made this turn. Models sometimes loop on an identical call
+    # (four identical passage searches in one answer); a repeat is answered
+    # from the record instead of run again, which also keeps a write such as a
+    # highlight from being made twice.
+    made: set[str] = set()
 
     def fail(message: str) -> tuple[str, dict[str, Any]]:
         ending.update(status="error", error=message)
@@ -492,8 +497,13 @@ async def _rounds(
                 yield "tool_call", {"id": call.get("id"), "name": name, "args": args}
                 turn.tools_used.append(name)
 
-                with db.session() as conn:
-                    result = await tools.dispatch(conn, client, name, args, turn=turn)
+                key = tools.call_key(name, args)
+                if key in made:
+                    result = dict(tools.REPEATED)
+                else:
+                    made.add(key)
+                    with db.session() as conn:
+                        result = await tools.dispatch(conn, client, name, args, turn=turn)
 
                 if name in SEARCH_TOOLS and not result.get("error"):
                     misses = 0 if result.get("results") else misses + 1

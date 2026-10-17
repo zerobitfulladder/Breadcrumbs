@@ -369,3 +369,41 @@ def test_a_restored_thread_shows_the_correction_not_the_draft(conn):
     assert [m["content"] for m in answers] == ["The rate is 0.03."]
     # The draft's step stays in the trail of the answer that replaced it.
     assert [t["name"] for t in answers[0]["tools"]] == ["show_in_pdf"]
+
+
+def test_an_identical_tool_call_is_not_run_twice(conn, monkeypatch):
+    from backend.ai import agent, providers
+
+    db.set_settings(conn, {
+        "assistant_provider": "deepseek", "assistant_model": "fake", "ai_deepseek_key": "k",
+    })
+    session = agent.create_session(conn)
+    conn.commit()
+
+    search = {"name": "search_pdf", "arguments": '{"paper_id": 1, "query": "learning rate"}'}
+    script = iter([
+        {"content": "", "tool_calls": [{"id": "a", "type": "function", "function": search}]},
+        {"content": "", "tool_calls": [{"id": "b", "type": "function", "function": search}]},
+        {"content": "Done.", "tool_calls": []},
+    ])
+
+    async def fake_chat(*_args, **_kwargs):
+        return next(script)
+
+    ran: list[str] = []
+    real_dispatch = tools.dispatch
+
+    async def counting_dispatch(conn_, client, name, args, turn=None):
+        ran.append(name)
+        return await real_dispatch(conn_, client, name, args, turn=turn)
+
+    monkeypatch.setattr(providers, "chat", fake_chat)
+    monkeypatch.setattr(tools, "dispatch", counting_dispatch)
+
+    async def run() -> list[tuple[str, dict]]:
+        return [e async for e in agent.run_turn(session, "What rate?", None)]
+
+    events = asyncio.run(run())
+    assert ran == ["search_pdf"]
+    summaries = [d["summary"] for name, d in events if name == "tool_result"]
+    assert summaries[1] == "search_pdf: same call as before, not run again"

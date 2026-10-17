@@ -226,10 +226,17 @@ finding them is what the evaluation is for.
     correction alone, the draft's steps stay in the trail, and the turn's
     record keeps the draft. The evaluation likewise scores what survives the
     correction; saved runs predate this and were scored with the drafts in.
+13. **Bread repeated itself.** Asked which papers build on feedback alignment,
+    it answered from the library's links, then ran the same passage search,
+    with the same arguments, four times over. A call identical to one already
+    made in the turn is now answered from the record instead of being run
+    again. Bread is told its result is already above, and the trail shows the
+    call as not run, which also keeps a write such as a highlight from being
+    made twice.
 
 **A limit the evaluation shows rather than fixes**
 
-13. **A verified quote can sit under an invented claim.** Asked for the
+14. **A verified quote can sit under an invented claim.** Asked for the
     Forward-Forward goodness threshold, which the paper never states, GPT-5.6
     Luna answered "θ = 2" and cited, verbatim, the sentence that *defines* θ.
     The chip correctly says the quote is in the paper; it cannot say the quote

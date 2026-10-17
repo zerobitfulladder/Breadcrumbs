@@ -66,17 +66,31 @@ async function ask(d, chat, question) {
  */
 async function answerClip(d, chat, path) {
   const page = d.page;
-  await d.stage("scrollToChild", `${chat} .as-log`, ".as-turn.is-user");
-  await page.waitForTimeout(700);
-  const asked = await d.box(page.locator(`${chat} .as-turn.is-user`).last());
-  const answer = await d.box(page.locator(`${chat} .as-turn.is-assistant`).last());
-  const log = await d.box(page.locator(`${chat} .as-log`));
+  const measure = async () => {
+    await d.stage("scrollToChild", `${chat} .as-log`, ".as-turn.is-user");
+    await page.waitForTimeout(700);
+    return {
+      asked: await d.box(page.locator(`${chat} .as-turn.is-user`).last()),
+      answer: await d.box(page.locator(`${chat} .as-turn.is-assistant`).last()),
+      log: await d.box(page.locator(`${chat} .as-log`)),
+    };
+  };
+  let { asked, answer, log } = await measure();
+  // A long answer runs past the panel's bottom edge, so the window is made
+  // taller for this shot alone, by exactly what is missing.
+  const size = page.viewportSize();
+  const missing = answer.y + answer.h + 10 - (log.y + log.h);
+  if (missing > 0) {
+    await page.setViewportSize({ width: size.width, height: size.height + Math.ceil(missing) + 40 });
+    ({ asked, answer, log } = await measure());
+  }
   const top = asked.y - 10;
   const bottom = Math.min(answer.y + answer.h + 10, log.y + log.h);
   await d.stage("hidden", true);
   await page.waitForTimeout(200);
   const png = await page.screenshot({ clip: { x: log.x, y: top, width: log.w, height: bottom - top } });
   await d.stage("hidden", false);
+  if (missing > 0) await page.setViewportSize(size);
   await writeFile(path, png);
   console.log(`  wrote ${path}`);
   return { png: png.toString("base64"), width: log.w };
