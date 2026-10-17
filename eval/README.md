@@ -202,9 +202,20 @@ finding them is what the evaluation is for.
    information". The judge prompt now defines its terms, and every saved run
    was re-judged (`./breadcrumbs eval judge`).
 
+**Found while making the README's screenshots**
+
+10. **A suggested paper had someone else's identifier.** Asked for a paper
+    that builds on feedback alignment, Bread wrote a link titled for one
+    paper, with the arXiv id of an unrelated paper on Chern-Simons theory. The
+    preview showed the real record, so nothing wrong could be saved, but the
+    suggestion itself was false, and nothing checked it. Suggestions are now
+    checked like quotes: the identifier is looked up in OpenAlex and its real
+    title compared with the one written. A mismatch loses its button and joins
+    the correction round.
+
 **A limit the evaluation shows rather than fixes**
 
-10. **A verified quote can sit under an invented claim.** Asked for the
+11. **A verified quote can sit under an invented claim.** Asked for the
     Forward-Forward goodness threshold, which the paper never states, GPT-5.6
     Luna answered "θ = 2" and cited, verbatim, the sentence that *defines* θ.
     The chip correctly says the quote is in the paper; it cannot say the quote

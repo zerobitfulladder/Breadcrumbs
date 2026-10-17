@@ -117,7 +117,9 @@ export default function AnswerRecord({ text, citations, check, run }: Props) {
         <div className="ar-repair">
           {repair.reason === "uncited"
             ? "The first draft said what the paper says without citing it, so Bread was asked to quote it"
-            : `${plural(repair.failed.length, "quote")} in the first draft could not be verified, so Bread was asked to correct ${repair.failed.length === 1 ? "it" : "them"}`}
+            : repair.wrong_papers?.length && !repair.failed.length
+              ? "The first draft suggested a paper under another paper's identifier, so Bread was asked to correct it"
+              : `${plural(repair.failed.length + (repair.wrong_papers?.length ?? 0), "citation")} in the first draft could not be verified, so Bread was asked to correct them`}
           {repair.final_check && repair.final_check.failed > 0
             ? `; ${repair.final_check.failed} still could not be found.`
             : "."}

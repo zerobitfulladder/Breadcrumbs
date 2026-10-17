@@ -86,6 +86,12 @@ def test_tex_greek_folds_like_the_glyph():
     assert pdftext.fold(r"rate $\eta$ and $\epsilon$") == pdftext.fold("rate η and ϵ")
 
 
+def test_symbol_font_equals_sign_matches_a_typed_one():
+    # Paper 90's PDF stores every "=" as "¼"; a model quoting it types "=".
+    assert pdftext.fold("(2.4% mean error; n = 20)") == pdftext.fold("(2.4% mean error; n ¼ 20)")
+    assert pdftext.fold("x½h") == pdftext.fold("x[h")
+
+
 def test_ligatures_fold_to_plain_letters():
     assert pdftext.fold("ofﬂine ﬁnal") == pdftext.fold("offline final")
 
@@ -312,3 +318,30 @@ def test_suggestion_links_to_held_papers_become_plain_titles(conn):
     rendered, _ = citations.check(conn, text)
     assert "**Local learning**" in rendered
     assert "[Something new](paper:10.1000/not-held)" in rendered
+
+
+def test_suggested_identifiers_are_checked_against_the_title(conn):
+    from backend.ai import suggestions
+
+    records = {
+        "1609.01596": {"title": "Direct Feedback Alignment Provides Learning in Deep Neural Networks",
+                       "year": 2016, "authors": [{"name": "Arild Nøkland"}]},
+        "1609.05093": {"title": "Complex Chern-Simons and Gribov", "year": 2016,
+                       "authors": [{"name": "Marcelo M. Amaral"}]},
+    }
+
+    async def resolve(ident):
+        return records.get(ident)
+
+    text = (
+        "Read [Direct Feedback Alignment](paper:1609.01596), "
+        "[Direct Feedback Alignment](paper:1609.05093), "
+        "[Nøkland 2016](paper:1609.01596) and [Something](paper:9999.99999)."
+    )
+    rendered, found = asyncio.run(suggestions.check(conn, None, text, resolve))
+    assert [f["status"] for f in found] == ["matches", "mismatch", "matches", "unchecked"]
+    # The wrong one loses its button and says what the identifier really is.
+    assert "(paper:1609.05093)" not in rendered
+    assert "Complex Chern-Simons and Gribov" in rendered
+    assert "[Direct Feedback Alignment](paper:1609.01596)" in rendered
+    assert len(suggestions.repair_lines(found)) == 1

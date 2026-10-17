@@ -372,7 +372,10 @@ export default function Assistant({
             summary:
               c.reason === "uncited"
                 ? "claims about the paper with no citation; asked Bread to quote them"
-                : `${c.failed.length} of ${c.total} quotes not verified; asked Bread to correct them`,
+                : [
+                    c.failed.length ? `${c.failed.length} of ${c.total} quotes not verified` : "",
+                    c.wrong_papers ? `${c.wrong_papers} suggested paper's identifier is another paper` : "",
+                  ].filter(Boolean).join(", ") + "; asked Bread to correct it",
             preview: c.failed.map((f) => `[${f.n}] ${f.status}: “${f.quote}”`).join("\n"),
           });
           setActivity([...seen]);

@@ -684,6 +684,7 @@ export interface RunRecord {
     draft_check: CitationTally;
     final_check?: CitationTally;
     failed: Citation[];
+    wrong_papers?: { label: string; identifier: string; resolved_title?: string }[];
   } | null;
   started_at?: string;
   finished_at?: string | null;
@@ -731,6 +732,8 @@ export interface ChatHandlers {
   onCheck?: (c: CitationTally & {
     phase: "repair";
     reason: "unverified" | "uncited";
+    /** Suggested papers whose identifiers turned out to be other papers. */
+    wrong_papers?: number;
     failed: { n: number; paper_id: number; quote: string; status: Citation["status"] }[];
   }) => void;
   onMessage?: (m: {

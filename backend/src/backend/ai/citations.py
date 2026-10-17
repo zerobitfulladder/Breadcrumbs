@@ -160,8 +160,12 @@ def summary(citations: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
-def repair_prompt(citations: list[dict[str, Any]]) -> str:
-    """What the assistant is told when some of its quotes were not found."""
+def repair_prompt(citations: list[dict[str, Any]], extra: list[str] | None = None) -> str:
+    """What the assistant is told when some of what it cites did not check out.
+
+    `extra` carries other failed checks in the same form, such as suggested
+    papers whose identifiers turned out to be different papers.
+    """
     lines = []
     for c in citations:
         if c["status"] == NOT_FOUND:
@@ -173,9 +177,10 @@ def repair_prompt(citations: list[dict[str, Any]]) -> str:
             lines.append(f"- [{c['n']}] there is no paper with id {c['paper_id']}.")
         elif c["status"] == TOO_SHORT:
             lines.append(f"- [{c['n']}] \"{c['quote']}\" is too short to identify a passage.")
+    lines.extend(extra or [])
     return (
-        "Citation check (automatic, not from the user): some quotes in your answer could not "
-        "be found word for word.\n"
+        "Citation check (automatic, not from the user): some of what your answer cites "
+        "could not be verified.\n"
         + "\n".join(lines)
         + "\n\nFind the exact wording with search_pdf, search_passages or read_pdf and fix each "
         "quote, or remove the citation and say plainly that the claim is unverified or comes "

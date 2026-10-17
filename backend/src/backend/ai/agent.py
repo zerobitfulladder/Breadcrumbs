@@ -21,7 +21,7 @@ from typing import Any, AsyncIterator
 
 from .. import db
 from ..sources.http import SourceError, make_client
-from . import citations, providers, provenance, skills, tools
+from . import citations, providers, provenance, skills, suggestions, tools
 
 log = logging.getLogger(__name__)
 
@@ -355,6 +355,7 @@ async def _rounds(
     # a one-liner. Its citations count toward the turn's check like any other.
     said: list[str] = []
     said_cited: list[dict[str, Any]] = []
+    said_suggested: list[dict[str, Any]] = []
     misses = 0
 
     def fail(message: str) -> tuple[str, dict[str, Any]]:
@@ -383,8 +384,12 @@ async def _rounds(
             if not calls:
                 with db.session() as conn:
                     rendered, cited = citations.check(conn, text)
+                    rendered, suggested = await suggestions.check(conn, client, rendered)
                 everything = said_cited + cited
                 tally = citations.summary(everything)
+                wrong_papers = [
+                    x for x in said_suggested + suggested if x["status"] == suggestions.MISMATCH
+                ]
 
                 # One chance to fix the answer's grounding before it is shown:
                 # quotes that were not found, or claims about a paper it read
@@ -392,8 +397,11 @@ async def _rounds(
                 # the thread, since the corrected answer replaces it, but the
                 # turn's record keeps it and why: a repair is part of what
                 # happened and is not hidden.
-                if citations.needs_repair(everything):
-                    reason, prompt = "unverified", citations.repair_prompt(everything)
+                if citations.needs_repair(everything) or wrong_papers:
+                    reason = "unverified"
+                    prompt = citations.repair_prompt(
+                        everything, extra=suggestions.repair_lines(wrong_papers)
+                    )
                 elif turn.documents and citations.attributes_without_citing(
                     "\n".join([*said, text]), everything
                 ):
@@ -405,9 +413,11 @@ async def _rounds(
                     failed = [c for c in everything if c["status"] != citations.VERIFIED]
                     turn.repair = {
                         "reason": reason, "draft": text, "draft_check": tally, "failed": failed,
+                        "wrong_papers": wrong_papers,
                     }
                     yield "check", {
                         "phase": "repair", "reason": reason, **tally,
+                        "wrong_papers": len(wrong_papers),
                         "failed": [
                             {"n": c["n"], "paper_id": c["paper_id"], "quote": c["quote"],
                              "status": c["status"]}
@@ -436,11 +446,15 @@ async def _rounds(
 
             # Prose written before a tool call is shown in the thread too, so
             # its citations are checked the same way.
+            suggested: list[dict[str, Any]] = []
             with db.session() as conn:
                 rendered, cited = citations.check(conn, text) if text else ("", [])
+                if text:
+                    rendered, suggested = await suggestions.check(conn, client, rendered)
             if text:
                 said.append(text)
                 said_cited.extend(cited)
+                said_suggested.extend(suggested)
                 yield "text", {"text": rendered, "citations": cited}
             messages.append(
                 {"role": "assistant", "content": text, "tool_calls": calls}

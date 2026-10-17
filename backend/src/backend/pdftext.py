@@ -67,6 +67,15 @@ _GREEK = str.maketrans({
 })
 
 
+# Another broken text layer: maths set in a Symbol/MathPi font whose codes
+# land on Latin-1 fractions, so "n = 20" is extracted as "n ¼ 20" and "[" as
+# "½" (Nature and Elsevier PDFs, among them three in one test library). NFKD
+# would expand each into digits ("14", "12") that no quote contains; dropped
+# instead, like every other symbol. A real fraction is dropped on both sides
+# of a comparison, so it still matches itself.
+_MATH_GLYPHS = str.maketrans({"¼": " ", "½": " ", "¾": " "})
+
+
 def _mend_math_letters(text: str) -> str:
     """Undo a common broken text layer: math italics truncated to 16 bits.
 
@@ -92,7 +101,7 @@ def fold(text: str) -> str:
     that is not a letter or a digit removes all of it at once, and closing the
     gaps is exactly what makes a hyphenated break match the joined word.
     """
-    text = unicodedata.normalize("NFKD", _mend_math_letters(text or ""))
+    text = unicodedata.normalize("NFKD", _mend_math_letters(text or "").translate(_MATH_GLYPHS))
     text = "".join(c for c in text if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", "", text.lower().translate(_GREEK))
 
