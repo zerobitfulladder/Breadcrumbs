@@ -46,6 +46,11 @@ def _startup() -> None:
     db.init_db()
     with db.session() as conn:
         _apply_api_keys(conn)
+    # The code this server runs is the code it started with, so its version is
+    # read now: a file edited later must not mark every answer "+dirty".
+    from .ai import provenance
+
+    provenance.app_version()
     # Bring passage search up to date with the PDFs on disk: new files, and
     # any indexed by an older chunker or model. On a thread, so the server
     # answers at once; a search meanwhile indexes what it needs itself.

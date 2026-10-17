@@ -178,7 +178,10 @@ finding them is what the evaluation is for.
    stated, which is what the reader experiences; the judge, reading the quotes,
    counted them correct. That gap is the whole difference between the two
    "correct" columns for that model. The prompt now says the quote is not shown
-   inline. The Gemini run predates that change and was not repeated.
+   inline, and since a prompt is not a guarantee (DeepSeek later did the same
+   in a screenshot run), the answer now shows any quote whose words are not
+   already in the sentence, in quotation marks before its chip. The Gemini run
+   predates both changes and was not repeated.
 7. **One model searched without end.** On questions the paper cannot answer,
    Gemini searched the PDF and the web for thirty rounds and never replied. After
    four searches in a row that find nothing, each further miss now says plainly

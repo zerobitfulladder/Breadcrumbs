@@ -300,6 +300,7 @@
 .ar-ok { color: var(--ok-fg); }
 .ar-bad { color: var(--danger-fg); }
 .ar-warn { color: var(--warn-fg); }
+.ar-lib { color: var(--link-cite); }
 .ar-dim { color: var(--text-dim); opacity: 0.8; }
 .ar-toggle {
   margin-left: auto; padding: 0 4px; font: inherit; font-size: 10.5px;

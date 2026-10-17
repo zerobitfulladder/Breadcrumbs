@@ -90,6 +90,9 @@ async function copyLibrary(source) {
   // assistant, and nothing yet marked in the paper the tour reads.
   const db = new DatabaseSync(join(home, "library.db"));
   db.exec("DELETE FROM chat_messages; DELETE FROM chat_sessions;");
+  // Turn records, where the library has them yet: the copy starts with none.
+  const hasTurns = db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'chat_turns'").get();
+  if (hasTurns) db.exec("DELETE FROM chat_turns;");
   db.prepare("DELETE FROM highlights WHERE paper_id = ?").run(PAPER.id);
   db.prepare("UPDATE papers SET status = 'unread' WHERE id = ?").run(PAPER.id);
   db.close();

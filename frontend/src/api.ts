@@ -669,6 +669,8 @@ export interface RunRecord {
     sent?: Record<string, unknown>;
     usage?: Record<string, number>;
   }[];
+  /** Every tool the turn called, in order. */
+  tools_used?: string[];
   documents?: { paper_id: number; title?: string; sha256: string; bytes: number }[];
   usage?: Record<string, number>;
   rounds?: number;

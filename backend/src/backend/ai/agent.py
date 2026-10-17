@@ -460,6 +460,7 @@ async def _rounds(
                     args = {}
 
                 yield "tool_call", {"id": call.get("id"), "name": name, "args": args}
+                turn.tools_used.append(name)
 
                 with db.session() as conn:
                     result = await tools.dispatch(conn, client, name, args, turn=turn)

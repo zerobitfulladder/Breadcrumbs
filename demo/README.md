@@ -8,9 +8,15 @@ camera:
 
 - the grid and the citation trail
 - a paper and one of its authors
-- Bread on the library
+- Bread on the library: an answer from its records, then one from its own
+  knowledge, each labelled as what it is
 - the reader: a highlight, then a question about a passage
+- a question about what the paper says: the quotes checked against the PDF,
+  a chip opening the passage, the record of what produced the answer, and a
+  question the paper cannot answer
 - Bread marking the page itself
+
+The cursor is hidden on the opening and closing title cards.
 
 ```bash
 cd demo
@@ -33,14 +39,15 @@ Two more scripts make the README's pictures:
 
 ```bash
 npm run gif      # ../docs/trail.gif, the grid lighting one paper at a time
-npm run stills   # ../docs/grid.png and ../docs/reader.png
+npm run stills   # ../docs/grid.png, reader.png, grounding.png, three-kinds.png
 ```
 
 The GIF drives nothing. Left alone, the grid tours itself, and the GIF records
 that at normal speed, with no cursor in the way. `trail.mjs` lists the papers
 it lands on. The tour picks at random, so the script feeds it numbers that
-make those papers its picks. The reader still asks Bread for real, so it costs
-one answer.
+make those papers its picks. The stills ask Bread for real, four times: the
+reader, a cited answer for `grounding.png`, and an answer of each kind for
+`three-kinds.png`, which lays the three side by side under their headings.
 
 It needs ffmpeg, and Chromium for Playwright 1.63
 (`npx playwright-core install chromium` if it is not already in
@@ -54,8 +61,8 @@ port 8765, with no earlier conversations and nothing marked yet in the paper
 the tour reads. The copy is deleted when the run ends.
 
 The copy keeps your settings, keys included, and Bread answers for real
-through the configured provider. Three questions per run, so a few cents at
-most. Answers differ from take to take. The waits for them play fast, from
+through the configured provider. Six questions per video run, so a few cents
+at most. Answers differ from take to take. The waits for them play fast, from
 3× to 12×, with a badge on screen saying so.
 
 ## Changing it

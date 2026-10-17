@@ -151,6 +151,8 @@
     </svg>`;
 
   const els = {};
+  // Off for title cards, where an arrow resting on the name reads as a stray.
+  let pointerOff = false;
   const cam = { s: 1, x: 0, y: 0 };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms * SLOW));
 
@@ -242,7 +244,7 @@
     let rest = 0;
     window.addEventListener("mousemove", (e) => {
       els.cursor.style.transform = `translate(${e.clientX - 3}px, ${e.clientY - 2}px)`;
-      els.cursor.style.opacity = "1";
+      els.cursor.style.opacity = pointerOff ? "0" : "1";
       const now = performance.now();
       if (last) {
         // Horizontal speed in pixels per millisecond of video.
@@ -386,6 +388,12 @@
     els.badge.classList.toggle("is-on", Boolean(text));
   }
 
+  /** Show or hide the cursor; while hidden, moving the mouse does not bring it back. */
+  function pointer(on) {
+    pointerOff = !on;
+    els.cursor.style.opacity = on ? "1" : "0";
+  }
+
   /** Take the whole layer away, for a screenshot of the app alone. */
   function hidden(on) {
     els.layer.style.display = on ? "none" : "";
@@ -487,7 +495,7 @@
   }
 
   window.__stage = {
-    focus, reset, caption, card, keys, hideKeys, badge, cover, hidden,
+    focus, reset, caption, card, keys, hideKeys, badge, cover, hidden, pointer,
     textPoints, selectText, selectionText, scrollToChild,
     camera: () => ({ ...cam }),
     fontsReady: () => document.fonts.ready.then(() => true),

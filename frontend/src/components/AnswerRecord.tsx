@@ -8,26 +8,48 @@ interface Props {
   run?: RunRecord | null;
 }
 
-/** Answers shorter than this with no citations are not flagged: "Done." needs none. */
-const SUBSTANTIAL = 280;
+/** Answers shorter than this get no "own knowledge" label: "Done." needs none. */
+const SUBSTANTIAL = 120;
+
+/**
+ * Where an uncited answer came from, by the tools its turn called. Names match
+ * the backend's tools; one that is not listed counts as none of these.
+ */
+const LIBRARY_TOOLS = new Set([
+  "search_library", "list_papers", "get_paper", "list_authors", "get_author",
+  "get_paper_links", "find_author_works", "list_highlights", "pdf_sources",
+  "lookup_identifier", "run_sql",
+]);
+const WEB_TOOLS = new Set(["web_search", "fetch_url", "find_wikipedia"]);
+const WRITE_TOOLS = new Set([
+  "set_author_homepage", "set_author_bio", "set_author_photo", "attach_pdf",
+  "add_note", "add_highlight", "set_paper_status", "create_link",
+]);
 
 function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
 /**
- * The line under an answer saying how much of it was checked, and the record
- * of what produced it.
+ * The line under an answer saying what kind of statement it is and how much
+ * of it was checked, and the record of what produced it.
  *
- * Its job is calibration. A verified quote proves the words are in the paper,
- * not that the sentence around it is right, and uncited prose is the model's
- * own; the line says which is which rather than letting a confident answer
- * imply it was all checked.
+ * Its job is calibration. An answer can say three kinds of thing, and each is
+ * labelled for what it is:
+ *
+ *   - what a paper says: quoted, and each quote looked for in the paper
+ *   - what the library says: read from its records through tools
+ *   - what the model knows: its own explanation, nothing looked up
+ *
+ * A verified quote proves the words are in the paper, not that the sentence
+ * around it is right; the line never claims more than was checked.
  */
 export default function AnswerRecord({ text, citations, check, run }: Props) {
   const [open, setOpen] = useState(false);
   const tally = check ?? run?.citations ?? tallyOf(citations ?? []);
   const repair = run?.repair;
+  const used = new Set(run?.tools_used ?? []);
+  const any = (names: Set<string>) => [...used].some((n) => names.has(n));
 
   let summary: React.ReactNode = null;
   if (tally && tally.total > 0) {
@@ -41,18 +63,23 @@ export default function AnswerRecord({ text, citations, check, run }: Props) {
         <span className="ar-dim">the rest is Bread’s own explanation</span>
       </>
     );
-  } else if (run && text.length > SUBSTANTIAL) {
-    // Only where it tells the reader something. An answer reporting what
-    // Bread did (attached a file, set a status) needs no citation, and older
-    // answers have no record to say what was read.
-    if (run.documents?.length) {
-      summary = (
-        <span className="ar-warn">
-          No citations: nothing here was checked against the paper Bread read
-        </span>
+  } else if (repair?.reason === "uncited") {
+    // Asked once to quote what it attributed to the paper, and still did not.
+    summary = (
+      <span className="ar-warn">Says what the paper says but quotes none of it: unchecked</span>
+    );
+  } else if (run && !any(WRITE_TOOLS)) {
+    // Reporting what Bread did (attached a file, set a status) needs no label.
+    if (any(LIBRARY_TOOLS)) {
+      summary = <span className="ar-lib">From your library’s records</span>;
+    } else if (any(WEB_TOOLS)) {
+      summary = <span className="ar-warn">From web pages Bread read: follow its links to check</span>;
+    } else if (text.length > SUBSTANTIAL) {
+      summary = run.documents?.length || used.size ? (
+        <span className="ar-dim">Bread’s own explanation: nothing here is quoted from the paper</span>
+      ) : (
+        <span className="ar-dim">Bread’s own knowledge: nothing was looked up</span>
       );
-    } else if ((run.rounds ?? 0) <= 1) {
-      summary = <span className="ar-dim">Bread’s own knowledge: nothing was looked up</span>;
     }
   }
 

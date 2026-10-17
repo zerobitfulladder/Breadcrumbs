@@ -280,3 +280,23 @@ def test_abstention_rule_on_phrasings_seen_in_real_runs():
     # A confident invented value, with a real quote attached, is not abstaining.
     assert not abstains("The paper uses **θ = 2** for the goodness threshold.")
     assert not abstains("Feedback alignment reaches 2.1% error on MNIST.")
+
+
+def test_a_quote_the_sentence_lacks_is_shown_before_its_chip(conn):
+    hidden = 'The rate is [p. 1](cite:1 "the learning rate is set to 0.03 for every layer").'
+    rendered, _ = citations.check(conn, hidden)
+    assert rendered.startswith("The rate is “the learning rate is set to 0.03 for every layer” [p. 1]")
+
+    # Written out already: not repeated.
+    stated = (
+        'They say "the learning rate is set to 0.03 for every layer" '
+        '[p. 1](cite:1 "the learning rate is set to 0.03 for every layer").'
+    )
+    rendered, _ = citations.check(conn, stated)
+    assert rendered.count("0.03") == 1
+
+
+def test_inline_quotes_cannot_inject_markdown(conn):
+    text = '[p. 1](cite:1 "the learning rate is set to 0.03 for *every* layer $x$")'
+    rendered, _ = citations.check(conn, text)
+    assert r"\*every\*" in rendered and r"\$x\$" in rendered

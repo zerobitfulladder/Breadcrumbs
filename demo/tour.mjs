@@ -25,10 +25,18 @@ const TO_HIGHLIGHT =
 const TO_ASK_ABOUT =
   "However, this involves a precise, symmetric backward connectivity pattern, which is thought to be impossible in the brain.";
 
-const ASK_LIBRARY = "Which papers in my library build on this one? Three short bullets.";
+export const ASK_LIBRARY = "Which papers in my library build on this one? Three short bullets.";
+/** A question for the model's own knowledge, asked with no paper open. */
+export const ASK_KNOWLEDGE =
+  "From your own knowledge, in two or three sentences: what is the weight transport problem?";
 const ASK_PASSAGE = "Why would that be impossible in the brain? Two or three sentences.";
 const ASK_TO_MARK =
   "Highlight the sentence where they name the weight transport problem, with a one-line note on who named it.";
+/** A fact the paper states, on a later page, so citing it means finding it. */
+export const ASK_FACT =
+  "What mean MNIST test errors does the paper report for backprop and for feedback alignment?";
+/** Something the paper never reports, to show Bread saying so. */
+export const ASK_ABSENT = "And what test error does feedback alignment reach on CIFAR-10 in this paper?";
 
 export const card = (page, title) =>
   page.locator(".tl-box", { has: page.locator(".tl-box-title", { hasText: title }) });
@@ -69,6 +77,16 @@ async function frameAnswer(d, chat, opts) {
   await d.focus({ x: log.x, y: asked.y - 6, w: log.w, h: bottom - asked.y + 12 }, opts);
 }
 
+/** Frame the line under the latest answer: what kind of statement it is. */
+async function showLabel(d, chat, title, sub) {
+  const line = d.page.locator(`${chat} .ar-line`).last();
+  if (!(await line.count())) return;
+  await line.scrollIntoViewIfNeeded();
+  await d.caption(title, sub);
+  await d.focus(line, { fill: 0.75, max: 2.2 });
+  await d.wait(2000);
+}
+
 /** Zoom the PDF with ctrl and the wheel, the app's own gesture, to a given percentage. */
 export async function zoomPdf(d, percent) {
   const page = d.page;
@@ -98,8 +116,9 @@ async function bringIntoView(d, pageNo, phrase) {
   }
 }
 
-/** The first frame: dark, for the title card to lift off. */
+/** The first frame: dark, for the title card to lift off, with no cursor on it. */
 export async function setup(d) {
+  await d.stage("pointer", false);
   await d.stage("cover", true, 0);
 }
 
@@ -114,6 +133,7 @@ export default async function tour(d, { context }) {
   await d.wait(2600);
   await d.stage("card", null);
   await d.wait(600);
+  await d.stage("pointer", true);
 
   // --- The grid -------------------------------------------------------------
   await d.caption("Your whole library, laid out in time", "Every paper on one grid, a column for each five years");
@@ -158,6 +178,20 @@ export default async function tour(d, { context }) {
   await d.whileAssistantWorks();
   await frameAnswer(d, ".as-root", { fill: 0.9, max: 1.6 });
   await d.wait(await readingTime(page));
+
+  // Each answer says what kind of statement it is. This one: library records.
+  await showLabel(d, ".as-root", "Facts about your library come from its records", "Labelled as such, under the answer");
+
+  // The model's own knowledge, labelled as its own.
+  await d.focus(".as-root", { fill: 0.96, max: 1.4 });
+  await d.caption("Bread can explain from what it knows", "Welcome, and labelled as its own, never passed off as a paper's");
+  await d.click(page.locator(".as-compose textarea"), { after: 200 });
+  await d.type(ASK_KNOWLEDGE);
+  await d.press("Enter");
+  await d.whileAssistantWorks();
+  await frameAnswer(d, ".as-root", { fill: 0.9, max: 1.6 });
+  await d.wait(await readingTime(page));
+  await showLabel(d, ".as-root", "Its own knowledge, marked as its own", "Nothing was looked up, and the answer says so");
   await d.uncaption();
   await d.reset(800);
   await d.doubleShift();
@@ -202,6 +236,56 @@ export default async function tour(d, { context }) {
   await d.wait(await readingTime(page));
   await d.reset(900);
 
+  // --- Answers you can check -----------------------------------------------
+  // Live answers vary, so each beat checks its element is there rather than
+  // breaking the take when one answer happens not to cite.
+  await d.caption("Claims about the paper carry a quote", "Bread quotes it, and the server checks every word against the PDF");
+  await d.click(page.locator(".rd-chat .as-compose textarea"), { after: 200 });
+  await d.type(ASK_FACT);
+  await d.press("Enter");
+  await d.whileAssistantWorks();
+  await frameAnswer(d, ".rd-chat", { fill: 0.88, max: 1.7 });
+  await d.wait(await readingTime(page));
+
+  await showLabel(d, ".rd-chat", "What the paper says is quoted, and checked", "Each quote found word for word; the rest marked as Bread's own");
+
+  const chip = page.locator(".rd-chat .md-cite.is-ok").last();
+  if (await chip.count()) {
+    await d.reset(700);
+    await chip.scrollIntoViewIfNeeded();
+    await d.caption("One click to the passage", "The chip shows the page the words are really on");
+    await d.hover(chip, 500);
+    await d.click(chip, { after: 300 });
+    const flash = page.locator(".pv-reveal");
+    if (await flash.first().waitFor({ timeout: 4000 }).then(() => true, () => false)) {
+      const lines = [];
+      for (const f of await flash.all()) lines.push(await d.box(f));
+      await d.focus(union(...lines), { fill: 0.6, max: 1.9, ms: 700 });
+    }
+    await d.wait(2400);
+    await d.reset(800);
+  }
+
+  const toggle = page.locator(".rd-chat .ar-toggle").last();
+  if (await toggle.count()) {
+    await toggle.scrollIntoViewIfNeeded();
+    await d.caption("And a record of what produced it", "The model that answered, its prompt, the hash of every PDF it read");
+    await d.click(toggle, { after: 500 });
+    await d.focus(page.locator(".rd-chat .ar-detail").last(), { fill: 0.8, max: 1.9 });
+    await d.wait(3000);
+    await d.reset(800);
+    await d.click(toggle, { after: 300 });
+  }
+
+  await d.caption("When the paper doesn't say, Bread says so", "Instead of filling the gap with something plausible");
+  await d.click(page.locator(".rd-chat .as-compose textarea"), { after: 200 });
+  await d.type(ASK_ABSENT);
+  await d.press("Enter");
+  await d.whileAssistantWorks();
+  await frameAnswer(d, ".rd-chat", { fill: 0.88, max: 1.7 });
+  await d.wait(await readingTime(page));
+  await d.reset(900);
+
   // --- The assistant marking the page ---------------------------------------
   await d.caption("Bread can mark the page too", "Its highlights and notes appear while it works");
   await d.click(page.locator(".rd-chat .as-compose textarea"), { after: 200 });
@@ -233,6 +317,7 @@ export default async function tour(d, { context }) {
 
   // --- Close ----------------------------------------------------------------
   await d.uncaption();
+  await d.stage("pointer", false);
   await d.stage("card", "Breadcrumbs", "Local-first. <b>Your library stays on your machine.</b>");
   await d.wait(3800);
   await d.stage("cover", true, 900);

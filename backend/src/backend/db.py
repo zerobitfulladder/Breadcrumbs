@@ -84,6 +84,9 @@ _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # model's own words because that is what it is shown again next turn.
     ("chat_messages", "rendered", "TEXT"),
     ("chat_messages", "citations", "TEXT"),
+    # Which tools a turn called, so an answer can say where it came from: the
+    # paper, the library's records, the web, or the model alone.
+    ("chat_turns", "tools_used", "TEXT"),
 )
 
 # Tables from earlier designs that are no longer part of the app.

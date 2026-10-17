@@ -99,6 +99,7 @@ def check(conn: sqlite3.Connection, text: str) -> tuple[str, list[dict[str, Any]
     in every Markdown renderer, which the model's own spelling does not.
     """
     found: list[dict[str, Any]] = []
+    source = text or ""
 
     def replace(m: re.Match[str]) -> str:
         page = int(m["page"]) if m["page"] else None
@@ -106,9 +107,23 @@ def check(conn: sqlite3.Connection, text: str) -> tuple[str, list[dict[str, Any]
         result["n"] = len(found) + 1
         found.append(result)
         label = (m["label"] or "").strip() or "source"
-        return f"[{label}](citation:{result['n']})"
+        chip = f"[{label}](citation:{result['n']})"
+        # A quote the reader cannot see does no work. Models often put the
+        # substance in the quote ("backprop needs [p. 2](cite:…)"), leaving
+        # the sentence with a chip where the fact should be. Unless the quoted
+        # words already stand just before the citation, they are shown.
+        quote = result["quote"]
+        before = source[max(0, m.start() - 600):m.start()]
+        if not quote or pdftext.contains_quote(before, quote):
+            return chip
+        return f"“{_escape(quote)}” {chip}"
 
-    return CITE.sub(replace, text or ""), found
+    return CITE.sub(replace, source), found
+
+
+def _escape(text: str) -> str:
+    """A quote as literal Markdown: no emphasis, links, code or maths from it."""
+    return re.sub(r"([\\`*_\[\]$<>])", r"\\\1", " ".join(text.split()))
 
 
 def summary(citations: list[dict[str, Any]]) -> dict[str, int]:
