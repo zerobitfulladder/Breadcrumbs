@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from .. import db
+
 SKILLS_DIR = Path(__file__).with_name("skills")
 _FRONTMATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.S)
 
@@ -89,6 +91,8 @@ def schema_summary(conn: sqlite3.Connection) -> str:
 
     parts = []
     for row in rows:
+        if row["name"] in db.PRIVATE_TABLES:
+            continue                    # run_sql refuses it; not worth offering
         columns = conn.execute(f"PRAGMA table_info({row['name']})").fetchall()
         cols = ", ".join(
             f"{c['name']} {c['type'] or 'ANY'}" + (" PK" if c["pk"] else "") for c in columns

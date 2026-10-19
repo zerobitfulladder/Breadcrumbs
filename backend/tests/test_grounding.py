@@ -198,6 +198,26 @@ def test_homepage_is_verified_only_from_a_page_this_turn_fetched(conn):
     assert out["verified"] is True
 
 
+def test_the_assistants_sql_cannot_read_api_keys(conn):
+    db.set_settings(conn, {"ai_openai_key": "sk-secret", "contact_email": "me@example.org"})
+    conn.commit()
+    # Whatever run_sql returns goes to the model provider and into the chat
+    # history, so the table is refused by the database however it is reached.
+    for query in (
+        "SELECT key, value FROM settings",
+        "WITH s AS (SELECT value FROM settings) SELECT * FROM s",
+        "SELECT title, (SELECT group_concat(value) FROM settings) FROM papers",
+    ):
+        out = tools.run_sql(conn, query)
+        assert "rows" not in out and "API keys" in out["error"], query
+    assert tools.run_sql(conn, "SELECT title FROM papers WHERE id = 1")["rows"] == [
+        {"title": "Local learning"}
+    ]
+    from backend.ai import skills
+
+    assert "settings(" not in skills.schema_summary(conn)
+
+
 def test_notes_written_by_the_assistant_are_marked(conn):
     conn.execute("INSERT INTO notes(paper_id, body) VALUES (1, 'My own thoughts.')")
     turn = provenance.Turn(session_id=1, provider="x", model="some-model")

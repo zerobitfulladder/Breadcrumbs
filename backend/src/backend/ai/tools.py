@@ -864,6 +864,9 @@ SQL_ROW_CAP = 100
 # Only these may begin a statement. The read-only connection is the real
 # guarantee; this rejects the obvious cases with a clearer message first.
 _SQL_ALLOWED = re.compile(r"^\s*(select|with)\b", re.I)
+# sqlite_dbpage returns raw database pages, which would get around any
+# table-level rule. Most builds leave it out; refused anyway for those that don't.
+_SQL_UNREADABLE = db.PRIVATE_TABLES | {"sqlite_dbpage"}
 
 
 def read_skill(conn: sqlite3.Connection, name: str) -> dict[str, Any]:
@@ -900,8 +903,20 @@ def run_sql(conn: sqlite3.Connection, query: str) -> dict[str, Any]:
     except sqlite3.Error as exc:
         return {"error": f"Could not open the database read-only: {exc}"}
 
+    refused: list[str] = []
+
+    def authorize(action: int, table: str | None, *_: Any) -> int:
+        # SQLite reports the underlying table for every read, including one
+        # made through a view, a CTE or a subquery, so this cannot be talked
+        # around the way a pattern match on the query text could.
+        if action == sqlite3.SQLITE_READ and table in _SQL_UNREADABLE:
+            refused.append(table)
+            return sqlite3.SQLITE_DENY
+        return sqlite3.SQLITE_OK
+
     try:
         ro.row_factory = sqlite3.Row
+        ro.set_authorizer(authorize)
         # Stop a runaway query rather than hanging the turn.
         deadline = time.monotonic() + 10.0
         ro.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 10_000)
@@ -909,6 +924,8 @@ def run_sql(conn: sqlite3.Connection, query: str) -> dict[str, Any]:
         rows = cur.fetchmany(SQL_ROW_CAP + 1)
         columns = [d[0] for d in (cur.description or [])]
     except sqlite3.Error as exc:
+        if refused:
+            return {"error": f"The {refused[0]} table holds API keys and cannot be read."}
         return {"error": f"SQL error: {exc}"}
     finally:
         ro.close()

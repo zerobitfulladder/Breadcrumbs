@@ -320,6 +320,11 @@ SECRET_KEYS = {
     "search_api_key",
 }
 
+#: Tables the assistant's SQL may not read, because they hold the keys above.
+#: Whatever it reads goes to the model provider and into the chat history, so
+#: an API key read here would leave the machine.
+PRIVATE_TABLES = frozenset({"settings"})
+
 
 def get_settings(conn: sqlite3.Connection) -> dict[str, str]:
     return {r["key"]: (r["value"] or "") for r in conn.execute("SELECT key, value FROM settings")}
