@@ -348,7 +348,7 @@ def create_link(
 ) -> dict[str, Any]:
     if src_paper_id == dst_paper_id:
         return {"error": "A paper cannot link to itself."}
-    known = {r["type"] for r in conn.execute("SELECT type FROM link_types")}
+    known = {r["id"] for r in conn.execute("SELECT id FROM link_types")}
     if type not in known:
         return {"error": f"type must be one of {sorted(known)}"}
     try:

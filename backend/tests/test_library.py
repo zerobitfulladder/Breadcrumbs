@@ -137,3 +137,16 @@ def test_an_authors_affiliation_follows_their_latest_paper(conn):
     _save(conn, {"openalex": _paper("10.1000/new", "Newer", 2010, lecun("NYU"))})
     author_id = conn.execute("SELECT id FROM authors").fetchone()["id"]
     assert TestClient(api.app).get(f"/api/authors/{author_id}").json()["affiliation"] == "NYU"
+
+
+# --- what Bread writes -------------------------------------------------------------
+def test_bread_can_draw_a_typed_link(conn):
+    from backend.ai import tools
+
+    a = _save(conn, {"openalex": _paper("10.1000/a", "Method", 2015)})
+    b = _save(conn, {"openalex": _paper("10.1000/b", "Its extension", 2018)})
+    out = tools.create_link(conn, b, a, "extends", note="Adds a second layer.")
+    assert out.get("ok"), out
+    row = conn.execute("SELECT type, origin, confirmed FROM links").fetchone()
+    assert tuple(row) == ("extends", "assistant", 0)
+    assert "error" in tools.create_link(conn, b, a, "inspired")
