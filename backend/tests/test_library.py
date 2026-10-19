@@ -150,3 +150,20 @@ def test_bread_can_draw_a_typed_link(conn):
     row = conn.execute("SELECT type, origin, confirmed FROM links").fetchone()
     assert tuple(row) == ("extends", "assistant", 0)
     assert "error" in tools.create_link(conn, b, a, "inspired")
+
+
+def test_merging_authors_who_both_have_a_homepage_keeps_the_survivors(conn):
+    from backend import store
+    from backend.ai import tools
+
+    _save(conn, {"openalex": _paper("10.1000/h1", "One", 2001,
+                                    _authors(("Geoffrey Hinton", "A1")))})
+    _save(conn, {"openalex": _paper("10.1000/h2", "Two", 2002,
+                                    _authors(("Geoffrey E. Hinton", "A2")))})
+    keep, absorb = [r["id"] for r in conn.execute("SELECT id FROM authors ORDER BY id")]
+    tools.set_author_homepage(conn, keep, "https://example.org/keep")
+    tools.set_author_homepage(conn, absorb, "https://example.org/absorbed")
+    store.merge_authors(conn, keep, absorb)
+    assert [tuple(r) for r in conn.execute("SELECT author_id, url FROM author_links")] == [
+        (keep, "https://example.org/keep"),
+    ]

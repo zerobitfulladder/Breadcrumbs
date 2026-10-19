@@ -347,9 +347,11 @@ def merge_authors(conn: sqlite3.Connection, keep_id: int, absorb_id: int) -> dic
     conn.execute("DELETE FROM authorship_institutions WHERE author_id = ?", (absorb_id,))
     conn.execute("DELETE FROM paper_authors WHERE author_id = ?", (absorb_id,))
 
-    # Anything you wrote yourself moves wholesale; none of it is derived.
+    # Links found for the absorbed row move across. There is one of each kind
+    # per author, so where both rows have one the survivor's stays and the
+    # absorbed row's goes with it.
     moved["author_links"] = conn.execute(
-        "UPDATE author_links SET author_id = ? WHERE author_id = ?", (keep_id, absorb_id)
+        "UPDATE OR IGNORE author_links SET author_id = ? WHERE author_id = ?", (keep_id, absorb_id)
     ).rowcount
 
     # One profile per author, so the survivor's wins — but a field it lacks and
