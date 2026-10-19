@@ -1636,8 +1636,7 @@ def timeline(conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, Any]:
     links = [
         dict(l)
         for l in conn.execute(
-            "SELECT id, src_paper_id, dst_paper_id, type, intent, is_influential, "
-            "origin, confirmed FROM links"
+            "SELECT id, src_paper_id, dst_paper_id, type, origin, confirmed FROM links"
         )
     ]
     return {"papers": papers, "links": links}

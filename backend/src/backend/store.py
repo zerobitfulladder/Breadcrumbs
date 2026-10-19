@@ -610,9 +610,9 @@ def _create_link(conn: sqlite3.Connection, pending: sqlite3.Row, other_id: int) 
         return False
 
     conn.execute(
-        "INSERT INTO links(src_paper_id, dst_paper_id, type, context, intent, "
-        "is_influential, origin, confirmed) VALUES(?,?,?,?,?,?,'auto',0)",
-        (src, dst, link_type, pending["context"], pending["intent"], pending["is_influential"]),
+        "INSERT INTO links(src_paper_id, dst_paper_id, type, origin, confirmed) "
+        "VALUES(?,?,?,'auto',0)",
+        (src, dst, link_type),
     )
     return True
 

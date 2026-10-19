@@ -62,7 +62,6 @@ async def references_for(
                             a["name"] for a in (w.get("authors") or [])[:5] if a.get("name")
                         ) or None,
                         "citation_count": w.get("citation_count"),
-                        "context": None, "intent": None, "is_influential": 0,
                     }
                     for w in works
                 ]

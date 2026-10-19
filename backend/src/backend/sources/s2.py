@@ -31,7 +31,7 @@ PAPER_FIELDS = ",".join(
 # NOTE: on the citations/references endpoints the nested paper's fields are
 # named bare (`authors`, not `authors.name`); `authors.name` is rejected with
 # "Unrecognized or unsupported fields".
-EDGE_FIELDS = "title,year,externalIds,citationCount,authors,contexts,intents,isInfluential"
+EDGE_FIELDS = "title,year,externalIds,citationCount,authors"
 
 
 def _headers(api_key: str) -> dict[str, str]:
@@ -84,8 +84,6 @@ def _parse_edge(entry: dict[str, Any], side: str) -> dict[str, Any] | None:
         return None
     ext = p.get("externalIds") or {}
     names = [a.get("name") or "" for a in (p.get("authors") or [])[:5]]
-    contexts = entry.get("contexts") or []
-    intents = entry.get("intents") or []
     return {
         "doi": ids.norm_doi(ext.get("DOI")),
         "arxiv_id": ids.norm_arxiv(ext.get("ArXiv")),
@@ -95,9 +93,6 @@ def _parse_edge(entry: dict[str, Any], side: str) -> dict[str, Any] | None:
         "year": p.get("year"),
         "authors_blob": ", ".join(n for n in names if n) or None,
         "citation_count": p.get("citationCount"),
-        "context": contexts[0] if contexts else None,
-        "intent": intents[0] if intents else None,
-        "is_influential": 1 if entry.get("isInfluential") else 0,
     }
 
 

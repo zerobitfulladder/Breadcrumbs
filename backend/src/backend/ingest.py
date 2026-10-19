@@ -292,9 +292,8 @@ def merge_edge_lists(
 ) -> list[dict[str, Any]]:
     """Combine two reference lists, de-duplicated on any shared id.
 
-    Semantic Scholar contributes the citation context and intent; OpenAlex
-    contributes coverage and DOIs. Neither alone is complete: S2 returns no
-    references at all for some journals, and OpenAlex carries no context.
+    Neither source alone is complete: Semantic Scholar returns no references at
+    all for some journals, and OpenAlex misses some that S2 has.
     """
     merged: list[dict[str, Any]] = []
     index: dict[str, int] = {}
@@ -517,23 +516,7 @@ async def fetch_bundle(
         if oa_refs and settings.get("fetch_references", "1") == "1":
             try:
                 works = await openalex.fetch_works_batch(client, oa_refs, email)
-                oa_records = [
-                    {
-                        "doi": w.get("doi"),
-                        "openalex_id": w.get("openalex_id"),
-                        "s2_id": None,
-                        "arxiv_id": w.get("arxiv_id"),
-                        "title": w.get("title"),
-                        "year": w.get("year"),
-                        "authors_blob": ", ".join(
-                            a["name"] for a in (w.get("authors") or [])[:5] if a.get("name")
-                        ) or None,
-                        "citation_count": w.get("citation_count"),
-                        "context": None, "intent": None, "is_influential": 0,
-                    }
-                    for w in works
-                ]
-                references = merge_edge_lists(references, oa_records)
+                references = merge_edge_lists(references, [_edge_from_work(w) for w in works])
             except SourceError as exc:
                 warnings.append(f"reference details unavailable: {exc}")
                 if not references:
