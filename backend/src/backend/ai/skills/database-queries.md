@@ -21,22 +21,24 @@ That is deliberate: those tools carry checks that raw SQL would bypass.
 
 ## Notes that will save you a wasted query
 
-- `papers.lane` is the timeline row the user dragged a card to; `NULL` means
-  automatic placement. It is layout, not meaning.
-- `links` holds only citations **between papers both in the library**.
-  `origin` is `auto` when it was resolved from citation data, `manual` when the
-  user asserted it, `assistant` when you did. `confirmed` is whether the user
-  has endorsed it.
+- `links` holds only links **between papers both in the library**. `origin` is
+  `auto` for a citation resolved from a reference list, `manual` when the user
+  asserted it, `assistant` when you did. `confirmed` is whether the user has
+  endorsed a link they did not draw.
 - `pending_links` is the important one for "what am I missing": every reference
-  and citation recorded by identifier whose other side is not in the library.
-  `resolved_paper_id IS NULL` means still missing. A paper cited by many held
-  papers is a strong candidate to suggest.
+  a held paper makes, recorded by identifier. `resolved_paper_id IS NULL` means
+  the cited paper is not in the library. A paper cited by many held papers is a
+  strong candidate to suggest.
 - `paper_authors` carries author order in `position`; position 0 is first
   author. `is_corresponding` marks who handles correspondence.
 - `authors.normalized_name` is casefolded and stripped of punctuation, used for
   deduplication. Match on it rather than `name` when comparing.
+- An author's affiliation is not a column. The view `author_affiliation`
+  (`author_id`, `affiliation`, `country`) gives the institution on their most
+  recent paper; `authorship_institutions` gives where they were on each paper.
 - `author_profiles` caches Wikipedia lookups including misses: `status` is
-  `found` or `none`. `author_links` holds homepages the same way.
+  `found`, `none` or `error`. `author_links` holds homepages the same way.
+- `notes` has one row per paper, keyed by `paper_id`.
 - Full-text search lives in `papers_fts`; join with
   `papers.id IN (SELECT rowid FROM papers_fts WHERE papers_fts MATCH ?)`.
 
@@ -64,7 +66,7 @@ held papers reference them — the best answer to "what should I add next":
 SELECT pl.title, pl.doi, pl.year, COUNT(DISTINCT pl.from_paper_id) AS cited_by_mine,
        MAX(pl.citation_count) AS citations
 FROM pending_links pl
-WHERE pl.resolved_paper_id IS NULL AND pl.direction = 'reference' AND pl.title IS NOT NULL
+WHERE pl.resolved_paper_id IS NULL AND pl.title IS NOT NULL
 GROUP BY COALESCE(pl.doi, pl.openalex_id)
 ORDER BY cited_by_mine DESC, citations DESC
 LIMIT 15

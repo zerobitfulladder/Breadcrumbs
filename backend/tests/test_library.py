@@ -125,3 +125,15 @@ def test_names_are_paired_exactly_first_then_by_initials():
     # Yi Wang takes the exact match, which leaves Yu Wang the only reading of
     # "Y. Wang"; the initial T. stands for Timothy.
     assert [a.get("s2_author_id") for a in merged] == ["X2", "X1", "X3"]
+
+
+def test_an_authors_affiliation_follows_their_latest_paper(conn):
+    # Stored once, it kept whichever paper arrived first: LeCun at AT&T for good.
+    def lecun(institution: str) -> list[dict]:
+        return [{"name": "Yann LeCun", "openalex_id": "A1", "position": 0,
+                 "institutions": [{"name": institution, "openalex_id": institution}]}]
+
+    _save(conn, {"openalex": _paper("10.1000/old", "Older", 1998, lecun("AT&T"))})
+    _save(conn, {"openalex": _paper("10.1000/new", "Newer", 2010, lecun("NYU"))})
+    author_id = conn.execute("SELECT id FROM authors").fetchone()["id"]
+    assert TestClient(api.app).get(f"/api/authors/{author_id}").json()["affiliation"] == "NYU"

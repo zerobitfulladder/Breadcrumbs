@@ -102,9 +102,6 @@ class SettingsRequest(BaseModel):
 
 class PaperPatch(BaseModel):
     status: str | None = None
-    rating: int | None = None
-    importance: int | None = None
-    summary: str | None = None
     note: str | None = None
     favorite: bool | None = None
 
@@ -793,14 +790,11 @@ def patch_paper(
             list(fields.values()) + [paper_id],
         )
     if note is not None:
-        existing = conn.execute("SELECT id FROM notes WHERE paper_id = ?", (paper_id,)).fetchone()
-        if existing:
-            conn.execute(
-                "UPDATE notes SET body = ?, updated_at = datetime('now') WHERE id = ?",
-                (note, existing["id"]),
-            )
-        else:
-            conn.execute("INSERT INTO notes(paper_id, body) VALUES(?,?)", (paper_id, note))
+        conn.execute(
+            "INSERT INTO notes(paper_id, body) VALUES(?,?) ON CONFLICT(paper_id) DO UPDATE "
+            "SET body = excluded.body, updated_at = datetime('now')",
+            (paper_id, note),
+        )
     return get_paper(paper_id, conn)
 
 
@@ -977,7 +971,7 @@ def list_authors(conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, A
     author's work on hover without a request per author.
     """
     rows = conn.execute(
-        "SELECT a.id, a.name, a.orcid, a.affiliation, a.country, a.favorite, "
+        "SELECT a.id, a.name, a.orcid, af.affiliation, af.country, a.favorite, "
         "  COUNT(pa.paper_id) AS paper_count, "
         "  group_concat(pa.paper_id) AS paper_ids, "
         "  MIN(p.year) AS first_year, MAX(p.year) AS last_year, "
@@ -985,6 +979,7 @@ def list_authors(conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, A
         "FROM authors a "
         "JOIN paper_authors pa ON pa.author_id = a.id "
         "JOIN papers p ON p.id = pa.paper_id "
+        "LEFT JOIN author_affiliation af ON af.author_id = a.id "
         "GROUP BY a.id "
         "ORDER BY paper_count DESC, a.name"
     ).fetchall()
@@ -997,9 +992,16 @@ def list_authors(conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, A
     return {"authors": authors}
 
 
+#: An author row with the affiliation of their most recent paper.
+_AUTHOR_WITH_AFFILIATION = (
+    "SELECT a.*, af.affiliation, af.country FROM authors a "
+    "LEFT JOIN author_affiliation af ON af.author_id = a.id WHERE a.id = ?"
+)
+
+
 @app.get("/api/authors/{author_id}")
 def get_author(author_id: int, conn: sqlite3.Connection = Depends(db.get_conn)) -> dict[str, Any]:
-    row = conn.execute("SELECT * FROM authors WHERE id = ?", (author_id,)).fetchone()
+    row = conn.execute(_AUTHOR_WITH_AFFILIATION, (author_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "No such author")
     author = dict(row)
@@ -1061,7 +1063,7 @@ async def author_profile(
     A miss is cached too: most researchers have no Wikipedia page, and without
     that the same fruitless search would run on every visit.
     """
-    row = conn.execute("SELECT * FROM authors WHERE id = ?", (author_id,)).fetchone()
+    row = conn.execute(_AUTHOR_WITH_AFFILIATION, (author_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "No such author")
 

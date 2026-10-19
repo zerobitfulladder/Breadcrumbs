@@ -175,7 +175,7 @@ def delete_paper(conn: sqlite3.Connection, paper_id: int) -> dict[str, Any]:
     been added. Returns what was removed, so the caller can say so.
     """
     paper = conn.execute(
-        "SELECT id, title, pdf_path, note_path FROM papers WHERE id = ?", (paper_id,)
+        "SELECT id, title, pdf_path FROM papers WHERE id = ?", (paper_id,)
     ).fetchone()
     if paper is None:
         raise ValueError(f"No paper with id {paper_id}")
@@ -246,22 +246,19 @@ def delete_paper(conn: sqlite3.Connection, paper_id: int) -> dict[str, Any]:
             "DELETE FROM institutions WHERE id = ?", (institution_id,)
         ).rowcount
 
-    # Files last: the database row is gone, so a failure here strands a file
+    # The file last: the database row is gone, so a failure here strands a file
     # rather than leaving a record pointing at nothing.
     removed["files"] = []
     root = db.library_root()
-    for column in ("pdf_path", "note_path"):
-        stored = paper[column]
-        if not stored:
-            continue
+    if stored := paper["pdf_path"]:
         path = Path(stored)
         path = path if path.is_absolute() else root / path
         try:
             # Refuse to follow a path out of the library, whatever is stored.
             path.resolve().relative_to(root.resolve())
         except ValueError:
-            continue
-        if path.is_file():
+            path = None
+        if path is not None and path.is_file():
             path.unlink()
             removed["files"].append(str(stored))
 
@@ -351,11 +348,9 @@ def merge_authors(conn: sqlite3.Connection, keep_id: int, absorb_id: int) -> dic
     conn.execute("DELETE FROM paper_authors WHERE author_id = ?", (absorb_id,))
 
     # Anything you wrote yourself moves wholesale; none of it is derived.
-    for table in ("notes", "author_links", "author_affiliations"):
-        cur = conn.execute(
-            f"UPDATE {table} SET author_id = ? WHERE author_id = ?", (keep_id, absorb_id)
-        )
-        moved[table] = cur.rowcount
+    moved["author_links"] = conn.execute(
+        "UPDATE author_links SET author_id = ? WHERE author_id = ?", (keep_id, absorb_id)
+    ).rowcount
 
     # One profile per author, so the survivor's wins — but a field it lacks and
     # the absorbed row has is still worth having, a portrait most of all.
@@ -428,8 +423,6 @@ def _store_authors(conn: sqlite3.Connection, paper_id: int, authors: list[dict[s
             (paper_id, author_id, author.get("position", 0), int(bool(author.get("is_corresponding")))),
         )
 
-        primary_country = None
-        primary_name = None
         for inst in author.get("institutions") or []:
             inst_id = _upsert_institution(conn, inst)
             if inst_id is None:
@@ -438,15 +431,6 @@ def _store_authors(conn: sqlite3.Connection, paper_id: int, authors: list[dict[s
                 "INSERT OR IGNORE INTO authorship_institutions(paper_id, author_id, institution_id) "
                 "VALUES(?,?,?)",
                 (paper_id, author_id, inst_id),
-            )
-            if primary_name is None:
-                primary_name, primary_country = inst.get("name"), inst.get("country_code")
-
-        if primary_name:
-            conn.execute(
-                "UPDATE authors SET affiliation = COALESCE(affiliation, ?), "
-                "country = COALESCE(country, ?) WHERE id = ?",
-                (primary_name, primary_country, author_id),
             )
 
 

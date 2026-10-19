@@ -432,7 +432,7 @@ export default function AuthorPanel({
         {links.homepage?.status === "found" ? (
           <div className="ap-homepage">
             <a href={links.homepage.url ?? "#"} target="_blank" rel="noreferrer">
-              {links.homepage.title || links.homepage.url}
+              {links.homepage.url}
             </a>
             <span className="ap-verified" title="The page was fetched and names this author">
               verified
@@ -443,7 +443,7 @@ export default function AuthorPanel({
           </div>
         ) : (
           <p className="ap-none-text">
-            {links.homepage?.detail ?? "Not looked up yet."}
+            Not looked up yet.
           </p>
         )}
         <button

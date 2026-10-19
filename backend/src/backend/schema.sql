@@ -1,6 +1,9 @@
 -- Breadcrumbs schema
--- One SQLite file per library. All user-owned rows carry owner_id so a future
--- multi-user/sync mode is not blocked; single-user mode always uses owner_id = 1.
+--
+-- One SQLite file per library, and this file is the whole of its definition:
+-- a library is created from it and nothing alters it afterwards. A change to
+-- the schema means building a new library from the new file and copying the
+-- data across, not patching an old one in place.
 
 PRAGMA foreign_keys = ON;
 
@@ -9,7 +12,6 @@ PRAGMA foreign_keys = ON;
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS papers (
     id           INTEGER PRIMARY KEY,
-    owner_id     INTEGER NOT NULL DEFAULT 1,
 
     -- bibliographic
     title        TEXT    NOT NULL,
@@ -29,22 +31,14 @@ CREATE TABLE IF NOT EXISTS papers (
     pmid         TEXT UNIQUE,
     url          TEXT,                     -- landing page
 
-    -- local artefacts
-    pdf_path     TEXT,                     -- relative to library root
-    note_path    TEXT,                     -- markdown file, relative to root
+    pdf_path     TEXT,                     -- relative to the library root
 
-    -- your own study metadata
+    -- your own marks
     status       TEXT    NOT NULL DEFAULT 'unread'
                  CHECK (status IN ('unread','queued','reading','skimmed','read','archived')),
-    rating       INTEGER CHECK (rating BETWEEN 0 AND 5),
-    importance   INTEGER CHECK (importance BETWEEN 0 AND 5), -- your own weighting
-
-    -- Vertical position on the timeline, set by dragging a card. Continuous
-    -- rather than a row index: 0 sits on the axis, 1.5 halfway to the next
-    -- row, negative below the axis. NULL means "pack me automatically".
-    -- Stored so an arrangement you build by hand survives reloading.
-    lane         REAL,
-    summary      TEXT,                     -- one-line "what this paper does"
+    -- Starred by hand. On both papers and authors because the two lists are
+    -- browsed the same way and "the ones I care about" means the same in each.
+    favorite     INTEGER NOT NULL DEFAULT 0,
 
     -- upstream counts, refreshed on sync, never authoritative
     citation_count  INTEGER,
@@ -67,55 +61,41 @@ CREATE TABLE IF NOT EXISTS papers (
 
 CREATE INDEX IF NOT EXISTS idx_papers_year   ON papers(year);
 CREATE INDEX IF NOT EXISTS idx_papers_status ON papers(status);
-CREATE INDEX IF NOT EXISTS idx_papers_owner  ON papers(owner_id);
 
--- full-text search over title + abstract + your summary
+-- full-text search over title and abstract
 CREATE VIRTUAL TABLE IF NOT EXISTS papers_fts USING fts5(
-    title, abstract, summary,
+    title, abstract,
     content='papers', content_rowid='id', tokenize='porter unicode61'
 );
 
 CREATE TRIGGER IF NOT EXISTS papers_fts_ai AFTER INSERT ON papers BEGIN
-    INSERT INTO papers_fts(rowid, title, abstract, summary)
-    VALUES (new.id, new.title, new.abstract, new.summary);
+    INSERT INTO papers_fts(rowid, title, abstract) VALUES (new.id, new.title, new.abstract);
 END;
 CREATE TRIGGER IF NOT EXISTS papers_fts_ad AFTER DELETE ON papers BEGIN
-    INSERT INTO papers_fts(papers_fts, rowid, title, abstract, summary)
-    VALUES ('delete', old.id, old.title, old.abstract, old.summary);
+    INSERT INTO papers_fts(papers_fts, rowid, title, abstract)
+    VALUES ('delete', old.id, old.title, old.abstract);
 END;
-CREATE TRIGGER IF NOT EXISTS papers_fts_au AFTER UPDATE ON papers BEGIN
-    INSERT INTO papers_fts(papers_fts, rowid, title, abstract, summary)
-    VALUES ('delete', old.id, old.title, old.abstract, old.summary);
-    INSERT INTO papers_fts(rowid, title, abstract, summary)
-    VALUES (new.id, new.title, new.abstract, new.summary);
+-- Only when the indexed text changes: starring a paper or setting its status
+-- leaves the search index alone.
+CREATE TRIGGER IF NOT EXISTS papers_fts_au AFTER UPDATE OF title, abstract ON papers BEGIN
+    INSERT INTO papers_fts(papers_fts, rowid, title, abstract)
+    VALUES ('delete', old.id, old.title, old.abstract);
+    INSERT INTO papers_fts(rowid, title, abstract) VALUES (new.id, new.title, new.abstract);
 END;
 
 -- ---------------------------------------------------------------------------
--- authors
+-- authors and where they worked
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS authors (
-    id             INTEGER PRIMARY KEY,
-    owner_id       INTEGER NOT NULL DEFAULT 1,
-
-    name           TEXT NOT NULL,
+    id              INTEGER PRIMARY KEY,
+    name            TEXT NOT NULL,
     normalized_name TEXT,                  -- lowercased, for dedupe/matching
-    s2_author_id   TEXT UNIQUE,
-    openalex_id    TEXT UNIQUE,
-    orcid          TEXT UNIQUE,
-    homepage       TEXT,
-
-    -- "know them" fields you asked for
-    bio            TEXT,                   -- free text you write yourself
-    affiliation    TEXT,                   -- current/last known institution
-    city           TEXT,
-    country        TEXT,
-    lab            TEXT,                   -- group name, e.g. "Bengio Lab"
-
-    h_index        INTEGER,
-    paper_count    INTEGER,
-
-    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    s2_author_id    TEXT UNIQUE,
+    openalex_id     TEXT UNIQUE,
+    orcid           TEXT UNIQUE,
+    favorite        INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_authors_norm ON authors(normalized_name);
@@ -140,42 +120,6 @@ CREATE TABLE IF NOT EXISTS author_ids (
 );
 CREATE INDEX IF NOT EXISTS idx_author_ids_author ON author_ids(author_id);
 
--- an author's affiliation changes over time; keep the history for context
-CREATE TABLE IF NOT EXISTS author_affiliations (
-    id          INTEGER PRIMARY KEY,
-    author_id   INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
-    institution TEXT NOT NULL,
-    city        TEXT,
-    country     TEXT,
-    start_year  INTEGER,
-    end_year    INTEGER
-);
-
-CREATE INDEX IF NOT EXISTS idx_affil_author ON author_affiliations(author_id);
-
--- institutions, keyed by ROR id. OpenAlex returns these per authorship, which
--- is where the "where are these people" answer comes from.
-CREATE TABLE IF NOT EXISTS institutions (
-    id           INTEGER PRIMARY KEY,
-    ror          TEXT UNIQUE,
-    openalex_id  TEXT UNIQUE,
-    name         TEXT NOT NULL,
-    country_code TEXT,                     -- ISO-2, e.g. 'GB'
-    type         TEXT,                     -- 'education' | 'company' | 'facility' ...
-    lat          REAL,
-    lon          REAL
-);
-
--- an authorship can carry several institutions, so this hangs off paper_authors
-CREATE TABLE IF NOT EXISTS authorship_institutions (
-    paper_id       INTEGER NOT NULL,
-    author_id      INTEGER NOT NULL,
-    institution_id INTEGER NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
-    PRIMARY KEY (paper_id, author_id, institution_id),
-    FOREIGN KEY (paper_id, author_id)
-        REFERENCES paper_authors(paper_id, author_id) ON DELETE CASCADE
-);
-
 -- many-to-many, ordered: paper 12 has author 5 in position 0 (first author)
 CREATE TABLE IF NOT EXISTS paper_authors (
     paper_id  INTEGER NOT NULL REFERENCES papers(id)  ON DELETE CASCADE,
@@ -188,49 +132,88 @@ CREATE TABLE IF NOT EXISTS paper_authors (
 CREATE INDEX IF NOT EXISTS idx_pa_author ON paper_authors(author_id);
 CREATE INDEX IF NOT EXISTS idx_pa_paper  ON paper_authors(paper_id);
 
--- ---------------------------------------------------------------------------
--- links between papers  (this is the "citations table with paper FKs" you asked
--- about, generalised: a citation is just one edge kind among several)
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS link_types (
-    id       TEXT PRIMARY KEY,             -- 'cites', 'extends', ...
-    label    TEXT NOT NULL,
-    color    TEXT,
-    directed INTEGER NOT NULL DEFAULT 1,
-    builtin  INTEGER NOT NULL DEFAULT 0
+-- Institutions, keyed by ROR id. OpenAlex returns these per authorship, which
+-- is where the "where are these people" answer comes from. The place is filled
+-- from OpenAlex on demand rather than at import, because most institutions are
+-- never looked at on a map; `geo_checked` records the attempt, so one with no
+-- known location is not looked up again.
+CREATE TABLE IF NOT EXISTS institutions (
+    id           INTEGER PRIMARY KEY,
+    ror          TEXT UNIQUE,
+    openalex_id  TEXT UNIQUE,
+    name         TEXT NOT NULL,
+    country_code TEXT,                     -- ISO-2, e.g. 'GB'
+    type         TEXT,                     -- 'education' | 'company' | 'facility' ...
+    city         TEXT,
+    lat          REAL,
+    lon          REAL,
+    geo_checked  TEXT
 );
 
-INSERT OR IGNORE INTO link_types (id, label, color, directed, builtin) VALUES
-    ('cites',       'cites',                 '#94a3b8', 1, 1),
-    ('extends',     'extends',               '#3b82f6', 1, 0),
-    ('uses_method', 'uses method of',        '#8b5cf6', 1, 0),
-    ('uses_data',   'uses data/benchmark of','#f59e0b', 1, 0),
-    ('contradicts', 'contradicts',           '#ef4444', 1, 0),
-    ('replicates',  'replicates',            '#10b981', 1, 0),
-    ('background',  'background for',        '#6b7280', 1, 0),
-    ('related',     'related to',            '#64748b', 0, 0);
+-- An authorship can carry several institutions, so this hangs off paper_authors.
+-- Row order is the order the source listed them in.
+CREATE TABLE IF NOT EXISTS authorship_institutions (
+    paper_id       INTEGER NOT NULL,
+    author_id      INTEGER NOT NULL,
+    institution_id INTEGER NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    PRIMARY KEY (paper_id, author_id, institution_id),
+    FOREIGN KEY (paper_id, author_id)
+        REFERENCES paper_authors(paper_id, author_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_author      ON authorship_institutions(author_id);
+CREATE INDEX IF NOT EXISTS idx_ai_institution ON authorship_institutions(institution_id);
+
+-- An author's affiliation: the first institution listed on their most recent
+-- paper in the library. Derived rather than stored, so it moves on when a
+-- newer paper is added instead of keeping whichever one arrived first.
+CREATE VIEW IF NOT EXISTS author_affiliation AS
+SELECT author_id, affiliation, country
+FROM (
+    SELECT ai.author_id,
+           i.name         AS affiliation,
+           i.country_code AS country,
+           ROW_NUMBER() OVER (
+               PARTITION BY ai.author_id
+               ORDER BY p.year DESC, p.month DESC, ai.rowid
+           ) AS latest
+    FROM authorship_institutions ai
+    JOIN papers p       ON p.id = ai.paper_id
+    JOIN institutions i ON i.id = ai.institution_id
+)
+WHERE latest = 1;
+
+-- ---------------------------------------------------------------------------
+-- links between papers: a citation is one kind of edge among several
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS link_types (
+    id    TEXT PRIMARY KEY,                -- 'cites', 'extends', ...
+    label TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO link_types (id, label) VALUES
+    ('cites',       'cites'),
+    ('extends',     'extends'),
+    ('uses_method', 'uses method of'),
+    ('uses_data',   'uses data/benchmark of'),
+    ('contradicts', 'contradicts'),
+    ('replicates',  'replicates'),
+    ('background',  'background for'),
+    ('related',     'related to');
 
 CREATE TABLE IF NOT EXISTS links (
     id            INTEGER PRIMARY KEY,
-    owner_id      INTEGER NOT NULL DEFAULT 1,
-
     src_paper_id  INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
     dst_paper_id  INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
     type          TEXT    NOT NULL REFERENCES link_types(id),
+    note          TEXT,                    -- why this link exists
 
-    note          TEXT,                    -- *why* this link exists, in your words
-
-    -- Left for your own use. Nothing populates these: third-party citation
-    -- classification is deliberately not imported, so link typing stays a
-    -- judgement you make. Available if you build your own extraction later.
-    context       TEXT,
-    intent        TEXT,
-
-    -- 'auto' = pulled from an API, 'manual' = you asserted it. Auto links are
-    -- suggestions; manual links are the curated graph.
+    -- Who drew it. 'auto': from a paper's reference list, a plain citation.
+    -- 'manual': you, through the API. 'assistant': Bread, on your request.
+    -- Typing a link is a judgement, so only the last two ever type one.
     origin        TEXT NOT NULL DEFAULT 'manual'
-                  CHECK (origin IN ('auto','manual')),
-    confirmed     INTEGER NOT NULL DEFAULT 0,  -- you accepted an auto link
+                  CHECK (origin IN ('auto','manual','assistant')),
+    confirmed     INTEGER NOT NULL DEFAULT 0,  -- you accepted a link you did not draw
 
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
 
@@ -264,7 +247,7 @@ CREATE TABLE IF NOT EXISTS pending_links (
     openalex_id   TEXT,
     arxiv_id      TEXT,
 
-    -- denormalised display data, so the inbox can show something useful
+    -- denormalised display data, so the reference list can show something useful
     title          TEXT,
     year           INTEGER,
     authors_blob   TEXT,                   -- "T. Lillicrap, A. Santoro"
@@ -290,7 +273,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_pend_s2
     ON pending_links(from_paper_id, s2_id) WHERE s2_id IS NOT NULL AND doi IS NULL;
 
 -- ---------------------------------------------------------------------------
--- cached author biographies
+-- author profiles: biography, portrait and links
 -- ---------------------------------------------------------------------------
 -- One row per author, written whether or not a page was found. Caching the
 -- misses matters as much as caching the hits: most researchers have no
@@ -299,7 +282,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_pend_s2
 CREATE TABLE IF NOT EXISTS author_profiles (
     author_id      INTEGER PRIMARY KEY REFERENCES authors(id) ON DELETE CASCADE,
     status         TEXT NOT NULL CHECK (status IN ('found','none','error')),
-    source         TEXT NOT NULL DEFAULT 'wikipedia',
+
+    -- the Wikipedia page, when one was found
     title          TEXT,
     url            TEXT,
     description    TEXT,               -- one-line gloss, e.g. "Finnish computer scientist"
@@ -307,11 +291,43 @@ CREATE TABLE IF NOT EXISTS author_profiles (
     thumbnail_url  TEXT,
     image_url      TEXT,
     detail         TEXT,               -- why nothing was found, when nothing was
+
+    -- The biography itself, kept apart from where it came from. Wikipedia is
+    -- one source among several, not the field's definition.
+    bio            TEXT,
+    bio_source     TEXT,
+    bio_updated_at TEXT,
+
+    -- A portrait you supplied or the assistant found, cached in the library
+    -- folder so it survives the original page moving or blocking hotlinks.
+    custom_image        TEXT,
+    custom_image_source TEXT,
+
+    -- Wikidata claims about this person, as JSON. Discrete facts that can be
+    -- shown and checked one by one, unlike a prose paragraph.
+    facts          TEXT,
+
     fetched_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Links the assistant finds and verifies for an author. Misses are recorded
+-- too, so a fruitless search is not repeated on every visit.
+CREATE TABLE IF NOT EXISTS author_links (
+    id         INTEGER PRIMARY KEY,
+    author_id  INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,               -- 'homepage' | 'wikipedia' | ...
+    status     TEXT NOT NULL CHECK (status IN ('found','none','error')),
+    url        TEXT,
+    verified   INTEGER NOT NULL DEFAULT 0,  -- the page was fetched and names the author
+    found_by   TEXT,                        -- 'wikidata' or 'provider/model'
+    fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (author_id, kind)
+);
+
+CREATE INDEX IF NOT EXISTS idx_author_links ON author_links(author_id);
+
 -- ---------------------------------------------------------------------------
--- assistant conversations and what it finds
+-- assistant conversations
 -- ---------------------------------------------------------------------------
 -- There are no per-task prompts. One assistant holds every capability as a
 -- tool, so "find this author's homepage" is a request in conversation rather
@@ -327,6 +343,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     id         INTEGER PRIMARY KEY,
     session_id INTEGER NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
     role       TEXT NOT NULL CHECK (role IN ('user','assistant','tool','system')),
+    -- The model's own words, which is what it is shown again next turn.
     content    TEXT,
     tool_calls TEXT,               -- JSON, when the assistant asked for tools
     tool_call_id TEXT,             -- which call a 'tool' row answers
@@ -351,7 +368,8 @@ CREATE TABLE IF NOT EXISTS chat_turns (
     -- Editing a message deletes it and what followed; its record goes too.
     user_message_id   INTEGER REFERENCES chat_messages(id) ON DELETE CASCADE,
     answer_message_id INTEGER REFERENCES chat_messages(id) ON DELETE SET NULL,
-    status            TEXT NOT NULL DEFAULT 'running',   -- running | done | error | stopped
+    status            TEXT NOT NULL DEFAULT 'running'
+                      CHECK (status IN ('running','done','error','stopped')),
     provider          TEXT,
     model             TEXT,          -- as chosen in settings
     route             TEXT,          -- OpenRouter upstream pin, if any
@@ -373,29 +391,12 @@ CREATE TABLE IF NOT EXISTS chat_turns (
     finished_at       TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_chat_turns ON chat_turns(session_id, id);
-
--- Links the assistant finds and verifies for an author. Misses are recorded
--- too, so a fruitless search is not repeated on every visit.
-CREATE TABLE IF NOT EXISTS author_links (
-    id         INTEGER PRIMARY KEY,
-    author_id  INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
-    kind       TEXT NOT NULL,               -- 'homepage' | 'wikipedia' | ...
-    status     TEXT NOT NULL CHECK (status IN ('found','none','error')),
-    url        TEXT,
-    title      TEXT,
-    snippet    TEXT,
-    verified   INTEGER NOT NULL DEFAULT 0,  -- the page was fetched and names the author
-    found_by   TEXT,                        -- 'wikidata' or 'provider/model'
-    detail     TEXT,
-    fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(author_id, kind)
-);
-
-CREATE INDEX IF NOT EXISTS idx_author_links ON author_links(author_id);
+CREATE INDEX IF NOT EXISTS idx_chat_turns        ON chat_turns(session_id, id);
+CREATE INDEX IF NOT EXISTS idx_chat_turns_user   ON chat_turns(user_message_id);
+CREATE INDEX IF NOT EXISTS idx_chat_turns_answer ON chat_turns(answer_message_id);
 
 -- ---------------------------------------------------------------------------
--- application settings (API keys, contact email, behaviour toggles)
+-- settings: API keys, contact email, behaviour toggles
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS settings (
     key        TEXT PRIMARY KEY,
@@ -405,9 +406,9 @@ CREATE TABLE IF NOT EXISTS settings (
 
 INSERT OR IGNORE INTO settings (key, value) VALUES
     ('contact_email',        ''),   -- used for API polite pools; required
+    ('openalex_key',         ''),   -- optional, raises OpenAlex's limits
     ('semantic_scholar_key', ''),   -- optional, lifts the 1 req/s shared limit
     ('fetch_references',     '1'),  -- pull "what this cites" on add
-    ('library_path',         ''),
     -- Your institution's EZproxy/OpenAthens prefix, e.g.
     -- 'https://login.ezproxy.your-uni.edu/login?url='. Used to build a link
     -- that opens the publisher copy through your own subscription.
@@ -432,21 +433,20 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('assistant_max_rounds', '12'),
     -- off | low | medium | high. Sent as reasoning_effort; models that cannot
     -- reason simply have it dropped on retry.
-    ('assistant_thinking',   'off');
+    ('assistant_thinking',   'off'),
+    -- OpenRouter only: the upstream provider to pin. Blank lets OpenRouter choose.
+    ('assistant_route',      '');
 
 -- ---------------------------------------------------------------------------
--- shelves (your ordered bookshelf) and tags
+-- shelves: your ordered bookshelf
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS shelves (
     id          INTEGER PRIMARY KEY,
-    owner_id    INTEGER NOT NULL DEFAULT 1,
-    name        TEXT NOT NULL,
-    description TEXT,
+    name        TEXT NOT NULL UNIQUE,
     color       TEXT,
     kind        TEXT NOT NULL DEFAULT 'topic'
                 CHECK (kind IN ('topic','supplement','dataset','background','method')),
-    sort_order  INTEGER NOT NULL DEFAULT 0,
-    UNIQUE (owner_id, name)
+    sort_order  INTEGER NOT NULL DEFAULT 0
 );
 
 INSERT OR IGNORE INTO shelves (id, name, kind, color, sort_order) VALUES
@@ -458,21 +458,14 @@ INSERT OR IGNORE INTO shelves (id, name, kind, color, sort_order) VALUES
 CREATE TABLE IF NOT EXISTS paper_shelves (
     paper_id   INTEGER NOT NULL REFERENCES papers(id)  ON DELETE CASCADE,
     shelf_id   INTEGER NOT NULL REFERENCES shelves(id) ON DELETE CASCADE,
-    sort_order INTEGER NOT NULL DEFAULT 0,   -- manual ordering within a shelf
     PRIMARY KEY (paper_id, shelf_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ps_shelf ON paper_shelves(shelf_id);
 
-CREATE TABLE IF NOT EXISTS tags (
-    id       INTEGER PRIMARY KEY,
-    owner_id INTEGER NOT NULL DEFAULT 1,
-    name     TEXT NOT NULL,
-    color    TEXT,
-    UNIQUE (owner_id, name)
-);
-
--- OpenAlex's own topic taxonomy. Kept separate from `tags`, which are yours.
+-- ---------------------------------------------------------------------------
+-- topics: OpenAlex's own taxonomy
+-- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS topics (
     id          INTEGER PRIMARY KEY,
     openalex_id TEXT UNIQUE,
@@ -489,42 +482,33 @@ CREATE TABLE IF NOT EXISTS paper_topics (
     PRIMARY KEY (paper_id, topic_id)
 );
 
-CREATE TABLE IF NOT EXISTS paper_tags (
-    paper_id INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
-    tag_id   INTEGER NOT NULL REFERENCES tags(id)   ON DELETE CASCADE,
-    PRIMARY KEY (paper_id, tag_id)
-);
-
 -- ---------------------------------------------------------------------------
 -- notes and highlights
 -- ---------------------------------------------------------------------------
--- A note attaches to exactly one of: paper, author, link, shelf.
+-- One note per paper: what you write about it, with anything Bread adds
+-- appended as its own marked block.
 CREATE TABLE IF NOT EXISTS notes (
-    id         INTEGER PRIMARY KEY,
-    owner_id   INTEGER NOT NULL DEFAULT 1,
-    paper_id   INTEGER REFERENCES papers(id)  ON DELETE CASCADE,
-    author_id  INTEGER REFERENCES authors(id) ON DELETE CASCADE,
-    link_id    INTEGER REFERENCES links(id)   ON DELETE CASCADE,
-    shelf_id   INTEGER REFERENCES shelves(id) ON DELETE CASCADE,
+    paper_id   INTEGER PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE,
     body       TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    CHECK ((paper_id IS NOT NULL) + (author_id IS NOT NULL)
-         + (link_id IS NOT NULL) + (shelf_id IS NOT NULL) = 1)
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_notes_paper ON notes(paper_id);
-
 CREATE TABLE IF NOT EXISTS highlights (
-    id         INTEGER PRIMARY KEY,
-    owner_id   INTEGER NOT NULL DEFAULT 1,
-    paper_id   INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
-    page       INTEGER NOT NULL,
-    rects      TEXT NOT NULL,              -- JSON array of {x,y,w,h} in PDF units
-    quoted     TEXT,                       -- selected text
-    comment    TEXT,
-    color      TEXT DEFAULT '#fde047',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    id          INTEGER PRIMARY KEY,
+    paper_id    INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+    page        INTEGER NOT NULL,
+    -- JSON array of {x,y,w,h} as fractions of the page (0-1), so a highlight
+    -- lands correctly at any zoom. The page size in points sits beside them,
+    -- so an export can convert back to absolute PDF units.
+    rects       TEXT NOT NULL,
+    page_width  REAL,
+    page_height REAL,
+    quoted      TEXT,                      -- selected text
+    comment     TEXT,
+    color       TEXT DEFAULT '#fde047',
+    source      TEXT CHECK (source IN ('user','assistant')),
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_hl_paper ON highlights(paper_id);
@@ -573,25 +557,3 @@ CREATE TRIGGER IF NOT EXISTS passages_fts_au AFTER UPDATE OF text ON passages BE
     INSERT INTO passages_fts(passages_fts, rowid, text) VALUES ('delete', old.id, old.text);
     INSERT INTO passages_fts(rowid, text) VALUES (new.id, new.text);
 END;
-
--- ---------------------------------------------------------------------------
--- reading log: when you actually engaged with a paper
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reading_events (
-    id        INTEGER PRIMARY KEY,
-    paper_id  INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
-    kind      TEXT NOT NULL CHECK (kind IN ('opened','skimmed','read','revisited')),
-    at        TEXT NOT NULL DEFAULT (datetime('now')),
-    minutes   INTEGER
-);
-
--- ---------------------------------------------------------------------------
--- convenience views
--- ---------------------------------------------------------------------------
-CREATE VIEW IF NOT EXISTS v_paper_authors AS
-SELECT p.id AS paper_id,
-       group_concat(a.name, ', ') AS author_list
-FROM papers p
-JOIN paper_authors pa ON pa.paper_id = p.id
-JOIN authors a        ON a.id = pa.author_id
-GROUP BY p.id;

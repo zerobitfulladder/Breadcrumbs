@@ -35,11 +35,13 @@ the PDF, a question the paper cannot answer, and Bread marking the page itself.
 ## Status
 
 Built for my own use, and still changing often. The schema, the commands and the
-layout all move without notice, and migrations are written for my library rather
-than for anyone else's. Treat it as something to read and take ideas from rather
-than something to depend on.
+layout all move without notice. Treat it as something to read and take ideas
+from rather than something to depend on.
 
-If you do run it, keep a copy of `library.db` before pulling.
+There are no migrations. `schema.sql` is the whole definition of a library: a
+new one is created from it, and when it changes, an existing library is rebuilt
+from the new file with its data copied across. If you do run it, keep a copy of
+`library.db` before pulling.
 
 ## Install and run
 
@@ -404,8 +406,8 @@ tests.
 
 ```
 backend/src/backend/
-  schema.sql    tables, indexes, seeded link types and shelves
-  db.py         connections, settings, migrations
+  schema.sql    the whole database: tables, views, indexes, seeded rows
+  db.py         connections, settings
   ids.py        identifier normalisation, the basis of link matching
   sources/      one adapter per API, plus a rate-limited HTTP client
   store.py      upserts, link resolution, author merging, deletion

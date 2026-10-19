@@ -244,9 +244,6 @@ export interface PaperRecord {
 export interface Paper extends PaperRecord {
   id: number;
   status: string;
-  rating?: number | null;
-  importance?: number | null;
-  summary?: string | null;
   favorite?: number;
   pdf_path?: string | null;
   note?: string;
@@ -842,11 +839,8 @@ export interface AuthorLink {
   kind: string;
   status: "found" | "none" | "error";
   url: string | null;
-  title: string | null;
-  snippet: string | null;
   verified: number;
   found_by: string | null;
-  detail: string | null;
   fetched_at: string;
 }
 

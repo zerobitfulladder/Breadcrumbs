@@ -55,7 +55,6 @@
   color: var(--text-dim); margin: 16px 0 5px;
 }
 /* The panel closes by clicking the pinned card again, or bare canvas. */
-.app-tldr { font-size: 12px; line-height: 1.55; color: var(--text); }
 .app-authors, .app-links { margin: 0; padding-left: 17px; font-size: 12px;
                            display: grid; gap: 4px; line-height: 1.45; }
 .app-links { padding-left: 0; list-style: none; }

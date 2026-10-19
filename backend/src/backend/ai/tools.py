@@ -109,7 +109,11 @@ def get_paper(conn: sqlite3.Connection, paper_id: int) -> dict[str, Any]:
     paper["authors"] = [
         dict(a)
         for a in conn.execute(
-            "SELECT a.id, a.name, a.affiliation, a.country, pa.position "
+            # Where each author was when they wrote this paper.
+            "SELECT a.id, a.name, pa.position, "
+            "  (SELECT group_concat(i.name, '; ') FROM authorship_institutions ai "
+            "   JOIN institutions i ON i.id = ai.institution_id "
+            "   WHERE ai.paper_id = pa.paper_id AND ai.author_id = pa.author_id) AS affiliation "
             "FROM paper_authors pa JOIN authors a ON a.id = pa.author_id "
             "WHERE pa.paper_id = ? ORDER BY pa.position",
             (paper_id,),
@@ -125,18 +129,19 @@ def get_paper(conn: sqlite3.Connection, paper_id: int) -> dict[str, Any]:
     ]
     note = conn.execute("SELECT body FROM notes WHERE paper_id = ?", (paper_id,)).fetchone()
     paper["note"] = _clip(note["body"]) if note else None
-    for drop in ("sources", "oa_pdf_url", "url", "owner_id"):
+    for drop in ("sources", "oa_pdf_url", "url"):
         paper.pop(drop, None)
     return paper
 
 
 def list_authors(conn: sqlite3.Connection, query: str | None = None) -> dict[str, Any]:
     sql = (
-        "SELECT a.id, a.name, a.affiliation, a.country, a.orcid, "
+        "SELECT a.id, a.name, af.affiliation, af.country, a.orcid, "
         "  COUNT(pa.paper_id) AS paper_count, "
         "  (SELECT url FROM author_links al WHERE al.author_id = a.id "
         "     AND al.kind='homepage' AND al.status='found') AS homepage "
         "FROM authors a JOIN paper_authors pa ON pa.author_id = a.id "
+        "LEFT JOIN author_affiliation af ON af.author_id = a.id "
     )
     args: list[Any] = []
     if query:
@@ -146,8 +151,15 @@ def list_authors(conn: sqlite3.Connection, query: str | None = None) -> dict[str
     return _cap([dict(r) for r in conn.execute(sql, args)])
 
 
+#: An author row with the affiliation of their most recent paper.
+_AUTHOR_WITH_AFFILIATION = (
+    "SELECT a.*, af.affiliation, af.country FROM authors a "
+    "LEFT JOIN author_affiliation af ON af.author_id = a.id WHERE a.id = ?"
+)
+
+
 def get_author(conn: sqlite3.Connection, author_id: int) -> dict[str, Any]:
-    row = conn.execute("SELECT * FROM authors WHERE id = ?", (author_id,)).fetchone()
+    row = conn.execute(_AUTHOR_WITH_AFFILIATION, (author_id,)).fetchone()
     if row is None:
         return {"error": f"No author with id {author_id}."}
     author = dict(row)
@@ -305,24 +317,19 @@ def add_note(
     if not (text or "").strip():
         return {"error": "The note text is empty."}
     text = bread_block(text, written_by)
-    existing = conn.execute(
-        "SELECT id, body FROM notes WHERE paper_id = ?", (paper_id,)
-    ).fetchone()
-    if existing:
-        body = f"{existing['body']}\n\n{text}" if append and existing["body"] else text
-        conn.execute(
-            "UPDATE notes SET body = ?, updated_at = datetime('now') WHERE id = ?",
-            (body, existing["id"]),
-        )
-    else:
-        conn.execute("INSERT INTO notes(paper_id, body) VALUES(?,?)", (paper_id, text))
+    existing = conn.execute("SELECT body FROM notes WHERE paper_id = ?", (paper_id,)).fetchone()
+    body = f"{existing['body']}\n\n{text}" if existing and append and existing["body"] else text
+    conn.execute(
+        "INSERT INTO notes(paper_id, body) VALUES(?,?) ON CONFLICT(paper_id) DO UPDATE "
+        "SET body = excluded.body, updated_at = datetime('now')",
+        (paper_id, body),
+    )
     return {"ok": True, "paper_id": paper_id}
 
 
 def set_paper_status(conn: sqlite3.Connection, paper_id: int, status: str) -> dict[str, Any]:
-    allowed = {"unread", "queued", "skimmed", "read", "archived"}
-    if status not in allowed:
-        return {"error": f"status must be one of {sorted(allowed)}"}
+    if status not in db.STATUSES:
+        return {"error": f"status must be one of {list(db.STATUSES)}"}
     cur = conn.execute(
         "UPDATE papers SET status = ?, updated_at = datetime('now') WHERE id = ?",
         (status, paper_id),
@@ -826,7 +833,7 @@ async def find_wikipedia(
     Exact rather than guessed: the page's Wikidata item must be a human, which
     is what stops a namesake stadium or novel being taken for a biography.
     """
-    row = conn.execute("SELECT * FROM authors WHERE id = ?", (author_id,)).fetchone()
+    row = conn.execute(_AUTHOR_WITH_AFFILIATION, (author_id,)).fetchone()
     if row is None:
         return {"error": f"No author with id {author_id}."}
     try:
@@ -1026,7 +1033,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "added. This searches their own library, not the internet. Use it first whenever "
         "they refer to a paper without giving an id. For what papers say inside, use "
         "search_passages.",
-        {"query": {**_STR, "description": "Words from the title, abstract or notes."},
+        {"query": {**_STR, "description": "Words from the title or abstract."},
          "limit": _INT},
         ["query"],
     ),
@@ -1226,7 +1233,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     ),
     _schema(
         "set_paper_status",
-        "Set reading status: unread, queued, skimmed, read or archived.",
+        f"Set reading status: {', '.join(db.STATUSES)}.",
         {"paper_id": _INT, "status": _STR},
         ["paper_id", "status"],
     ),

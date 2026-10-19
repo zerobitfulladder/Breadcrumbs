@@ -111,7 +111,7 @@ def strip_local(doc: Any) -> Any:
     if isinstance(doc, dict):
         out = {}
         for key, value in doc.items():
-            if key in ("pdf_path", "note_path"):
+            if key == "pdf_path":
                 out[key] = None
             elif key == "has_pdf":
                 out[key] = 0
