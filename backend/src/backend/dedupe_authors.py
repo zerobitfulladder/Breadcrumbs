@@ -21,42 +21,10 @@ it, and records the absorbed ids as aliases so the duplicate cannot come back.
 from __future__ import annotations
 
 import argparse
-import re
 import sqlite3
-import unicodedata
 from typing import Any
 
-from . import db, store
-
-
-def name_parts(name: str) -> tuple[list[str], str] | None:
-    """Given names and surname, stripped of accents, punctuation and case."""
-    folded = unicodedata.normalize("NFKD", name)
-    folded = "".join(c for c in folded if not unicodedata.combining(c))
-    tokens = re.sub(r"[^a-z ]", " ", folded.lower()).split()
-    if len(tokens) < 2:
-        return None
-    return tokens[:-1], tokens[-1]
-
-
-def compatible(a: list[str], b: list[str]) -> bool:
-    """Whether two given-name lists can belong to one person.
-
-    An initial stands for a full name, so "h b" matches "horace"; "robert"
-    and "richard" never match. Compares only as far as the shorter list, since
-    sources drop middle names freely.
-    """
-    if not a or not b:
-        return False
-    for x, y in zip(a, b):
-        if x == y:
-            continue
-        if len(x) == 1 and y.startswith(x):
-            continue
-        if len(y) == 1 and x.startswith(y):
-            continue
-        return False
-    return True
+from . import db, ids, store
 
 
 def find_duplicates(conn: sqlite3.Connection) -> list[tuple[dict[str, Any], dict[str, Any]]]:
@@ -71,7 +39,7 @@ def find_duplicates(conn: sqlite3.Connection) -> list[tuple[dict[str, Any], dict
     ]
     by_surname: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
-        parts = name_parts(row["name"])
+        parts = ids.name_parts(row["name"])
         if not parts:
             continue
         row["given"], surname = parts
@@ -82,7 +50,7 @@ def find_duplicates(conn: sqlite3.Connection) -> list[tuple[dict[str, Any], dict
         for i in range(len(group)):
             for j in range(i + 1, len(group)):
                 a, b = group[i], group[j]
-                if not compatible(a["given"], b["given"]):
+                if not ids.compatible(a["given"], b["given"]):
                     continue
                 # An ORCID is a person, not a record: two different ones are
                 # two people however alike the names look.

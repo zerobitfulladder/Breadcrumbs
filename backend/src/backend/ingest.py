@@ -13,10 +13,11 @@ import logging
 import re
 import sqlite3
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Callable
 
 import httpx
 
@@ -155,19 +156,59 @@ def _merge_authors(by_source: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
             base = [dict(a) for a in authors]
 
     s2_authors = (by_source.get("s2") or {}).get("authors") or []
-    if s2_authors and base:
-        by_name = {ids.norm_name(a.get("name")): a for a in s2_authors}
-        by_last: dict[str, dict[str, Any]] = {}
-        for a in s2_authors:
-            norm = ids.norm_name(a.get("name")) or ""
-            if norm:
-                by_last.setdefault(norm.split()[-1], a)
-        for author in base:
-            norm = ids.norm_name(author.get("name")) or ""
-            match = by_name.get(norm) or (by_last.get(norm.split()[-1]) if norm else None)
-            if match and not author.get("s2_author_id"):
-                author["s2_author_id"] = match.get("s2_author_id")
+    for author, match in _pair_by_name(base, s2_authors):
+        if not author.get("s2_author_id"):
+            author["s2_author_id"] = match.get("s2_author_id")
     return base
+
+
+def _pair_by_name(
+    ours: list[dict[str, Any]], theirs: list[dict[str, Any]]
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Pair one paper's authors as two sources spell them, where only one reading exists.
+
+    A grafted id decides which stored author a name is filed under, so a wrong
+    pair is not a small error: two co-authors given one id become one person.
+    Pairing on surname alone did exactly that to "Yi Wang" and "H. Wang".
+
+    Exact names pair first. Among the rest a surname and compatible given
+    names suffice ("T. Lillicrap" is "Timothy Lillicrap"), but only when the
+    match is unique both ways: beside a Yi Wang and a Yu Wang, "Y. Wang" could
+    be either, so it is left without an id rather than given a guess.
+    """
+    def key(author: dict[str, Any]) -> Any:
+        parts = ids.name_parts(author.get("name") or "")
+        return (tuple(parts[0]), parts[1]) if parts else ids.norm_name(author.get("name"))
+
+    def unique_pairs(
+        left: list[int], right: list[int], same: Callable[[int, int], bool]
+    ) -> list[tuple[int, int]]:
+        options = {i: [j for j in right if same(i, j)] for i in left}
+        claims = Counter(j for js in options.values() for j in js)
+        return [(i, js[0]) for i, js in options.items() if len(js) == 1 and claims[js[0]] == 1]
+
+    keys_ours = [key(a) for a in ours]
+    keys_theirs = [key(a) for a in theirs]
+    exact = unique_pairs(
+        list(range(len(ours))), list(range(len(theirs))),
+        lambda i, j: keys_ours[i] is not None and keys_ours[i] == keys_theirs[j],
+    )
+
+    def compatible(i: int, j: int) -> bool:
+        a, b = keys_ours[i], keys_theirs[j]
+        return (
+            isinstance(a, tuple) and isinstance(b, tuple)
+            and a[1] == b[1] and ids.compatible(list(a[0]), list(b[0]))
+        )
+
+    paired_ours = {i for i, _ in exact}
+    paired_theirs = {j for _, j in exact}
+    loose = unique_pairs(
+        [i for i in range(len(ours)) if i not in paired_ours],
+        [j for j in range(len(theirs)) if j not in paired_theirs],
+        compatible,
+    )
+    return [(ours[i], theirs[j]) for i, j in exact + loose]
 
 
 #: A year outside this range is a parsing artefact, not a publication date, and

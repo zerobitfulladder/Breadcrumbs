@@ -78,3 +78,50 @@ def test_a_reference_waits_until_its_paper_is_added(conn):
     later = _save(conn, {"openalex": _paper("10.1000/later", "Added later", 2015)})
     links = TestClient(api.app).get("/api/timeline").json()["links"]
     assert [(l["src_paper_id"], l["dst_paper_id"]) for l in links] == [(citing, later)]
+
+
+# --- authors ---------------------------------------------------------------------
+def _authors(*names_and_ids: tuple[str, str]) -> list[dict]:
+    key = "openalex_id" if names_and_ids[0][1].startswith("A") else "s2_author_id"
+    return [{"name": n, key: i, "position": p} for p, (n, i) in enumerate(names_and_ids)]
+
+
+def test_co_authors_sharing_a_surname_stay_two_people(conn):
+    # OpenAlex and Semantic Scholar spell the same two people differently.
+    # Grafting S2 ids on by surname gave both the first Wang's id, and the
+    # store then filed Hao Wang under Yi Wang's row and dropped him.
+    paper_id = _save(conn, {
+        "openalex": _paper("10.1000/wang", "Two Wangs", 2021,
+                           _authors(("Yi Wang", "A1"), ("H. Wang", "A2"))),
+        "s2": {"authors": _authors(("Y. Wang", "X1"), ("Hao Wang", "X2"))},
+    })
+    rows = conn.execute(
+        "SELECT a.name, a.openalex_id, a.s2_author_id FROM paper_authors pa "
+        "JOIN authors a ON a.id = pa.author_id WHERE pa.paper_id = ? ORDER BY pa.position",
+        (paper_id,),
+    ).fetchall()
+    assert [tuple(r) for r in rows] == [("Yi Wang", "A1", "X1"), ("H. Wang", "A2", "X2")]
+
+
+def test_an_ambiguous_name_gets_no_borrowed_id():
+    # Each "Y. Wang" could be either of S2's Wangs, so neither id is a safe guess.
+    merged = ingest._merge_authors({
+        "openalex": {"authors": _authors(("Y. Wang", "A1"), ("Y. Wang", "A2"))},
+        "s2": {"authors": _authors(("Yi Wang", "X1"), ("Yu Wang", "X2"))},
+    })
+    assert [a.get("openalex_id") for a in merged] == ["A1", "A2"]
+    assert [a.get("s2_author_id") for a in merged] == [None, None]
+
+
+def test_names_are_paired_exactly_first_then_by_initials():
+    merged = ingest._merge_authors({
+        "openalex": {"authors": _authors(
+            ("Yi Wang", "A1"), ("Y. Wang", "A2"), ("T. Lillicrap", "A3"),
+        )},
+        "s2": {"authors": _authors(
+            ("Yu Wang", "X1"), ("Yi Wang", "X2"), ("Timothy P. Lillicrap", "X3"),
+        )},
+    })
+    # Yi Wang takes the exact match, which leaves Yu Wang the only reading of
+    # "Y. Wang"; the initial T. stands for Timothy.
+    assert [a.get("s2_author_id") for a in merged] == ["X2", "X1", "X3"]

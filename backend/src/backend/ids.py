@@ -8,6 +8,7 @@ normalised on the way in or matches are silently missed.
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 _DOI_PREFIXES = ("https://doi.org/", "http://doi.org/", "https://dx.doi.org/", "doi:")
@@ -64,6 +65,36 @@ def norm_name(value: Any) -> str | None:
     s = re.sub(r"[.’']", "", str(value))
     s = re.sub(r"\s+", " ", s).strip().casefold()
     return s or None
+
+
+def name_parts(name: str) -> tuple[list[str], str] | None:
+    """Given names and surname, stripped of accents, punctuation and case."""
+    folded = unicodedata.normalize("NFKD", name)
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    tokens = re.sub(r"[^a-z ]", " ", folded.lower()).split()
+    if len(tokens) < 2:
+        return None
+    return tokens[:-1], tokens[-1]
+
+
+def compatible(a: list[str], b: list[str]) -> bool:
+    """Whether two given-name lists can belong to one person.
+
+    An initial stands for a full name, so "h b" matches "horace"; "robert"
+    and "richard" never match. Compares only as far as the shorter list, since
+    sources drop middle names freely.
+    """
+    if not a or not b:
+        return False
+    for x, y in zip(a, b):
+        if x == y:
+            continue
+        if len(x) == 1 and y.startswith(x):
+            continue
+        if len(y) == 1 and x.startswith(y):
+            continue
+        return False
+    return True
 
 
 def norm_pmid(value: Any) -> str | None:
