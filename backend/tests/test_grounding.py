@@ -31,7 +31,9 @@ PAGE_ONE = (
 PAGE_TWO = (
     "onto the second page so that a quote can span the page break. The second "
     "page also discusses why lateral inhibition is needed between hidden units, "
-    "and how sparse codes emerge when units compete for the same inputs."
+    "and how sparse codes emerge when units compete for the same inputs. Across "
+    "runs the correlation between the two codes was -0.8, and their overlap stayed "
+    "below the threshold (p < 0.01) in every case."
 )
 
 
@@ -110,6 +112,66 @@ def test_quote_may_run_onto_the_next_page(conn):
 def test_a_changed_word_is_not_found(conn):
     assert pdftext.locate_quote(_pdf(conn), "The network reaches an error of 1.63 percent") is None
     assert pdftext.locate_quote(_pdf(conn), "after sixty epochs of training with data augmentation") is None
+
+
+def test_a_changed_number_is_not_found(conn):
+    path = _pdf(conn)
+    assert pdftext.locate_quote(path, "The network reaches an error of 1.36 percent") is not None
+    # Every one of these folded to "136" once, and checked out.
+    assert pdftext.locate_quote(path, "The network reaches an error of 13.6 percent") is None
+    assert pdftext.locate_quote(path, "The network reaches an error of 136 percent") is None
+    # Nor may a quote stop partway through the number.
+    assert pdftext.locate_quote(path, "The network reaches an error of 1.3") is None
+
+
+def test_a_dropped_sign_or_flipped_comparison_is_not_found(conn):
+    path = _pdf(conn)
+    assert pdftext.locate_quote(path, "the correlation between the two codes was -0.8") is not None
+    assert pdftext.locate_quote(path, "the correlation between the two codes was −0.8") is not None
+    assert pdftext.locate_quote(path, "the correlation between the two codes was 0.8") is None
+    assert pdftext.locate_quote(path, "overlap stayed below the threshold (p < 0.01)") is not None
+    assert pdftext.locate_quote(path, "overlap stayed below the threshold (p > 0.01)") is None
+
+
+def test_dashes_that_are_not_signs_still_fold_away():
+    assert pdftext.fold("epochs 10–20") == pdftext.fold("epochs 10-20")
+    assert pdftext.fold("epochs 10-20") == pdftext.fold("epochs 1020")
+    assert pdftext.fold("a rate of 10^{-5}") == pdftext.fold("a rate of 10−5")
+    assert pdftext.fold("GPT-3 maps x -> y") == pdftext.fold("GPT 3 maps x → y")
+    assert pdftext.fold("r = -0.8") != pdftext.fold("r = 0.8")
+
+
+def test_an_ellipsis_cannot_drop_a_negation(conn):
+    path = _pdf(conn)
+    whole = "information are attractive because the brain has no obvious way"
+    assert pdftext.locate_quote(path, whole) is not None
+    assert pdftext.locate_quote(
+        path, "information are attractive because the brain has … obvious way"
+    ) is None
+    # The same reversal without an ellipsis: stopping at the start of "without".
+    assert pdftext.locate_quote(path, "test set after sixty epochs of training with") is None
+
+
+def test_an_ellipsis_skips_a_clause_not_a_passage(conn):
+    path = _pdf(conn)
+    # The two pieces are real, a page apart; joined, they say something the paper does not.
+    assert pdftext.locate_quote(
+        path, "without data augmentation … is needed between hidden units"
+    ) is None
+    # Words found in any paper, stitched together, identify nothing.
+    assert pdftext.too_short("We train … the network … reaches … sparse codes emerge")
+    stitched = '[p. 1](cite:1 "We train … the network … sparse codes emerge")'
+    _, found = citations.check(conn, stitched)
+    assert found[0]["status"] == citations.TOO_SHORT
+
+
+def test_an_abstract_is_held_to_the_same_rules():
+    abstract = "The error fell to 1.36 percent, which no earlier rule had reached."
+    assert pdftext.contains_quote(abstract, "The error fell to 1.36 percent")
+    assert not pdftext.contains_quote(abstract, "The error fell to 13.6 percent")
+    assert not pdftext.contains_quote(
+        abstract, "The error fell to 1.36 percent, which … earlier rule had reached"
+    )
 
 
 def test_line_breaks_copied_as_json_escapes_still_match(conn):

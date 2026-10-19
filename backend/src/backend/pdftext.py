@@ -18,7 +18,7 @@ import unicodedata
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from . import db
 
@@ -91,19 +91,46 @@ def _mend_math_letters(text: str) -> str:
     )
 
 
+# What a number says has to survive folding. Dropping every symbol is right for
+# words and wrong for numbers: "1.36", "13.6" and "136" all folded to "136",
+# "-0.8" to "08", and "p < 0.1" to the same as "p > 0.1", so a quote that
+# changed a result still matched. So three marks are kept: a decimal point, a
+# minus sign in front of a number, and a comparison. A hyphen, a range dash
+# ("10–20") and an exponent's sign ("10^{-5}", which extraction spells "10−5")
+# are not signs and still drop out. Every rule looks only within a word or at
+# the space before it, so a page folded word by word and a quote folded whole
+# come out the same.
+_ARROW = re.compile(r"<[-=]+>|[-=]+>|<-+(?![\d.])")
+_NUMBER_MARK = re.compile(
+    r"(?:(?<=\d)|(?<![\w.]))[.·](?=\d)"     # 1.36, .05
+    r"|(?<![\w)\]}{^.])[-−–](?=\.?\d)"      # -0.8, (−3), r = –2
+    r"|[<>≤≥≪≫]"
+)
+# Stand-ins that survive the letters-and-digits filter: fold has lowercased
+# everything by then, so no capital can be mistaken for one.
+_MARKS = {
+    ".": "P", "·": "P", "-": "M", "−": "M", "–": "M",
+    "<": "L", "≤": "L", "≪": "L", ">": "G", "≥": "G", "≫": "G",
+}
+_SHOW_MARKS = str.maketrans("PMLG", ".-<>")
+
+
 def fold(text: str) -> str:
-    """Lowercase alphanumerics only — the form quotes are matched in.
+    """Lowercase alphanumerics, and the marks that change a number — the form quotes are matched in.
 
     Typeset text and quoted text disagree in ways that carry no meaning. A word
     broken across a line is stored with its hyphen ("hyper-" / "parameters"),
     quotation marks are curly in one and straight in the other, an en-dash
     stands in for a hyphen, accents may be composed or not. Dropping everything
     that is not a letter or a digit removes all of it at once, and closing the
-    gaps is exactly what makes a hyphenated break match the joined word.
+    gaps is exactly what makes a hyphenated break match the joined word. The
+    exceptions are a number's point, sign and comparison: see _NUMBER_MARK.
     """
     text = unicodedata.normalize("NFKD", _mend_math_letters(text or "").translate(_MATH_GLYPHS))
     text = "".join(c for c in text if not unicodedata.combining(c))
-    return re.sub(r"[^a-z0-9]+", "", text.lower().translate(_GREEK))
+    text = _ARROW.sub(" ", text.lower().translate(_GREEK))
+    text = _NUMBER_MARK.sub(lambda m: _MARKS[m[0]], text)
+    return re.sub(r"[^a-z0-9PMLG]+", "", text).translate(_SHOW_MARKS)
 
 
 def extract_text(path: Path, max_pages: int = MAX_PAGES_SCANNED) -> list[dict[str, Any]]:
@@ -170,18 +197,24 @@ def _join_words(words: list[Any], first: int, last: int) -> str:
     return "".join(out).strip()
 
 
-def _page_index(page: Any) -> tuple[list[Any], str, list[int]]:
-    """A page's words, their text folded into one string, and who owns each character."""
-    words = page.get_text("words")      # (x0, y0, x1, y1, word, block, line, no)
+def _index_words(texts: Iterable[str]) -> tuple[str, list[int]]:
+    """Words folded into one string, and which word each character came from."""
     parts: list[str] = []
     owner: list[int] = []
-    for i, word in enumerate(words):
-        folded = fold(word[4])
+    for i, text in enumerate(texts):
+        folded = fold(text)
         if not folded:
             continue
         parts.append(folded)
         owner.extend([i] * len(folded))
-    return words, "".join(parts), owner
+    return "".join(parts), owner
+
+
+def _page_index(page: Any) -> tuple[list[Any], str, list[int]]:
+    """A page's words, their text folded into one string, and who owns each character."""
+    words = page.get_text("words")      # (x0, y0, x1, y1, word, block, line, no)
+    hay, owner = _index_words(w[4] for w in words)
+    return words, hay, owner
 
 
 def find_quote(
@@ -290,10 +323,43 @@ _ELISION = re.compile(r"\s*(?:\[\s*(?:…|(?:\.\s*){3})\s*\]|…|\.{3,})\s*")
 #: occurs in every paper; a clause or more identifies a passage.
 MIN_QUOTE = 20
 
+#: Folded characters each piece of an elided quote needs of its own. Without
+#: it, "We train … the network … reaches …" stitches a claim together out of
+#: words found in any paper.
+MIN_PIECE = 12
+
+#: Folded characters an ellipsis may stand for: a clause, or a sentence or two.
+#: Pieces further apart than that are separate passages, and joining them
+#: makes a sentence the paper does not contain. The longest skip among the
+#: eval runs' quotes was 154; one that joined a paragraph to a figure caption
+#: 2000 characters on is what this stops.
+MAX_ELIDED = 200
+
+#: Words that reverse a statement. A quote must hold as many as the passage it
+#: matches, so an ellipsis cannot drop the "no" from "has no obvious way", and
+#: a quote cannot stop at the "can" of "cannot".
+_NEGATION = re.compile(
+    r"\b(?:no|not|never|nor|neither|none|nothing|nobody|nowhere|without|cannot)\b|n[’']t\b",
+    re.I,
+)
+
+_NUMERIC = "0123456789."
+
 
 def quote_segments(quote: str) -> list[str]:
     """A quote's folded pieces, split where it elides words."""
     return [s for s in (fold(part) for part in _ELISION.split(quote or "")) if s]
+
+
+def too_short(quote: str) -> bool:
+    """Whether a quote, or any piece of it around an ellipsis, is too short to place."""
+    return _too_short(quote_segments(quote))
+
+
+def _too_short(segments: list[str]) -> bool:
+    if not segments or sum(len(s) for s in segments) < MIN_QUOTE:
+        return True
+    return len(segments) > 1 and min(len(s) for s in segments) < MIN_PIECE
 
 
 # A JSON escape copied out of a tool result: models read page text as JSON, so
@@ -312,15 +378,53 @@ def quote_variants(quote: str) -> list[str]:
     return [quote] if unescaped == quote else [quote, unescaped]
 
 
-def _match_in_order(hay: str, segments: list[str], start: int) -> list[tuple[int, int]] | None:
-    """Spans for each segment in turn, each after the last, the first at `start`."""
-    spans = [(start, start + len(segments[0]))]
-    for seg in segments[1:]:
-        at = hay.find(seg, spans[-1][1])
-        if at == -1:
-            return None
-        spans.append((at, at + len(seg)))
-    return spans
+def _place(
+    hay: str, owner: list[int], words: list[str], segments: list[str], quote: str,
+    begin_before: int | None = None,
+) -> list[tuple[int, int]] | None:
+    """Where each piece of a quote sits in `hay`, in order; None if it is not there.
+
+    `hay` is folded text and `owner[i]` the index in `words` of the word its
+    i-th character came from. The first piece must begin before `begin_before`
+    and each later one within MAX_ELIDED of the piece before. No piece may
+    begin or end inside a number, and the words covered, skipped ones
+    included, must hold as many negations as the quote.
+    """
+    negations = len(_NEGATION.findall(quote))
+
+    def cuts_number(a: int, b: int) -> bool:
+        # "1.3" is not "1.36", nor is "36" or "0.8" what "1.36" or "-0.8" says.
+        starts_inside = (
+            a > 0 and owner[a - 1] == owner[a]
+            and hay[a] in _NUMERIC and hay[a - 1] in _NUMERIC + "-"
+        )
+        ends_inside = (
+            b < len(hay) and owner[b] == owner[b - 1]
+            and hay[b - 1] in _NUMERIC and hay[b] in _NUMERIC
+        )
+        return starts_inside or ends_inside
+
+    def same_negations(spans: list[tuple[int, int]]) -> bool:
+        covered = words[owner[spans[0][0]]:owner[spans[-1][1] - 1] + 1]
+        return len(_NEGATION.findall(join_broken_words(" ".join(covered)))) == negations
+
+    def place(done: list[tuple[int, int]]) -> list[tuple[int, int]] | None:
+        if len(done) == len(segments):
+            return done if same_negations(done) else None
+        segment = segments[len(done)]
+        after = done[-1][1] if done else 0
+        until = after + MAX_ELIDED + 1 if done else (begin_before or len(hay))
+        at = hay.find(segment, after)
+        while at != -1 and at < until:
+            span = (at, at + len(segment))
+            if not cuts_number(*span):
+                found = place(done + [span])
+                if found is not None:
+                    return found
+            at = hay.find(segment, at + 1)
+        return None
+
+    return place([])
 
 
 def locate_quote(
@@ -332,24 +436,24 @@ def locate_quote(
     for part of the passage: every word must be there, in order. The only
     allowances are the ones that carry no meaning — typesetting, punctuation,
     case, hyphenation, TeX for a Greek letter — plus an ellipsis, which may skip
-    words but not reorder them. A quote may run from one page onto the next,
-    since a sentence often does.
+    a little text but not reorder it, change a number, or drop a "not". A
+    quote may run from one page onto the next, since a sentence often does.
 
     Returns the page it starts on, the rectangles to draw there, and the text as
     the document has it; None when it is not found or too short to identify a
     passage.
     """
     for variant in quote_variants(quote):
-        hit = _locate(path, quote_segments(variant), page_hint)
+        hit = _locate(path, quote_segments(variant), page_hint, variant)
         if hit is not None:
             return hit
     return None
 
 
 def _locate(
-    path: Path, segments: list[str], page_hint: int | None
+    path: Path, segments: list[str], page_hint: int | None, quote: str
 ) -> dict[str, Any] | None:
-    if not segments or sum(len(s) for s in segments) < MIN_QUOTE:
+    if _too_short(segments):
         return None
 
     pages = _pages(path)
@@ -363,13 +467,16 @@ def _locate(
         following = pages[index + 1] if index + 1 < len(pages) else None
         split = len(page.hay)
         hay = page.hay + (following.hay if following else "")
+        if not -1 < hay.find(segments[0]) < split:      # it must begin on this page
+            continue
 
-        at = hay.find(segments[0])
-        while at != -1 and at < split:          # it must begin on this page
-            spans = _match_in_order(hay, segments, at)
-            if spans is not None:
-                return _located(index, page, following, split, spans)
-            at = hay.find(segments[0], at + 1)
+        owner, words = page.owner, [w[4] for w in page.words]
+        if following is not None:
+            owner = owner + [i + len(words) for i in following.owner]
+            words = words + [w[4] for w in following.words]
+        spans = _place(hay, owner, words, segments, quote, begin_before=split)
+        if spans is not None:
+            return _located(index, page, following, split, spans)
     return None
 
 
@@ -406,16 +513,12 @@ def _located(
 
 def contains_quote(text: str, quote: str) -> bool:
     """The same test as `locate_quote`, against plain text such as an abstract."""
-    hay = fold(text)
+    words = (text or "").split()
+    hay, owner = _index_words(words)
     for variant in quote_variants(quote):
         segments = quote_segments(variant)
-        if not segments or sum(len(s) for s in segments) < MIN_QUOTE:
-            continue
-        at = hay.find(segments[0])
-        while at != -1:
-            if _match_in_order(hay, segments, at) is not None:
-                return True
-            at = hay.find(segments[0], at + 1)
+        if not _too_short(segments) and _place(hay, owner, words, segments, variant) is not None:
+            return True
     return False
 
 

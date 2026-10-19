@@ -63,7 +63,7 @@ def _check_one(
     out["year"] = row["year"]
     if not out["quote"]:
         return {**out, "status": NO_QUOTE}
-    if sum(len(s) for s in pdftext.quote_segments(out["quote"])) < pdftext.MIN_QUOTE:
+    if pdftext.too_short(out["quote"]):
         return {**out, "status": TOO_SHORT}
 
     checked: list[str] = []
@@ -171,12 +171,18 @@ def repair_prompt(citations: list[dict[str, Any]], extra: list[str] | None = Non
         if c["status"] == NOT_FOUND:
             lines.append(
                 f"- [{c['n']}] paper {c['paper_id']}: \"{c['quote']}\" is not in the paper's "
-                f"{' or '.join(c.get('checked') or ['text'])}."
+                f"{' or '.join(c.get('checked') or ['text'])}"
+                + (" as quoted: an ellipsis may not skip a negation or more than a sentence or two."
+                   if len(pdftext.quote_segments(c["quote"])) > 1 else ".")
             )
         elif c["status"] == UNKNOWN_PAPER:
             lines.append(f"- [{c['n']}] there is no paper with id {c['paper_id']}.")
         elif c["status"] == TOO_SHORT:
-            lines.append(f"- [{c['n']}] \"{c['quote']}\" is too short to identify a passage.")
+            elided = len(pdftext.quote_segments(c["quote"])) > 1
+            lines.append(
+                f"- [{c['n']}] \"{c['quote']}\" is too short to identify a passage"
+                + ("; each part around … needs several words of its own." if elided else ".")
+            )
     lines.extend(extra or [])
     return (
         "Citation check (automatic, not from the user): some of what your answer cites "

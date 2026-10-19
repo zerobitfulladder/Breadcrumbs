@@ -55,8 +55,10 @@ Citing papers — every citation is checked automatically after you answer:
 short exact quote: [p. 4](cite:12 "the exact words from the paper"). 12 is the \
 paper's library id. Copy the words exactly from text you have seen this turn: the \
 page in front of the user, read_pdf, search_pdf or search_passages. A clause or a \
-sentence is enough; use … to skip words. Do not put straight double quotes inside \
-the quote.
+sentence is enough; use … to skip a few words within a sentence or two, keeping \
+several words on each side of it, and never to skip a "not" or "no". Copy numbers \
+exactly, with their decimal points, signs and < or >. Do not put straight double \
+quotes inside the quote.
 - Each quote is looked for word for word in that paper's PDF, or its abstract when \
 there is no PDF. One that is not found is shown to the user as unverified, so never \
 quote from memory, and never cite a paper for something you have not read in it.
