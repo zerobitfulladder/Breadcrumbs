@@ -434,9 +434,11 @@ export default function AuthorPanel({
             <a href={links.homepage.url ?? "#"} target="_blank" rel="noreferrer">
               {links.homepage.url}
             </a>
-            <span className="ap-verified" title="The page was fetched and names this author">
-              verified
-            </span>
+            {links.homepage.verified ? (
+              <span className="ap-verified" title="The page was fetched and names this author">
+                verified
+              </span>
+            ) : null}
             {links.homepage.found_by && (
               <span className="ap-found-by">via {links.homepage.found_by}</span>
             )}
